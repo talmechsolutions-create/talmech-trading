@@ -106,3 +106,4 @@ Local JSON fallback files under `data/*.json` are ignored by git. To reset local
 ```bash
 npm run clean:local-data
 ```
+Deployment trigger update from Talmech account.
