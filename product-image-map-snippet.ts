@@ -1,0 +1,52 @@
+export const productImageMap: Record<string, string> = {
+  'aluminum-ingot': '/images/products/aluminum-ingot.webp',
+  'binding-wire': '/images/products/binding-wire.webp',
+  'brass-rods': '/images/products/brass-rods.webp',
+  'copper-armature-scrap': '/images/products/copper-armature-scrap.webp',
+  'copper-busbar': '/images/products/copper-busbar.webp',
+  'copper-cathode': '/images/products/copper-cathode.webp',
+  'copper-pipe': '/images/products/copper-pipe.webp',
+  'copper-rod': '/images/products/copper-rod.webp',
+  'copper-scrap-berry': '/images/products/copper-scrap-berry.webp',
+  'copper-scrap-millberry': '/images/products/copper-scrap-millberry.webp',
+  'copper-sheet': '/images/products/copper-sheet.webp',
+  'copper-strip': '/images/products/copper-strip.webp',
+  'copper-winding-wire': '/images/products/copper-winding-wire.webp',
+  'copper-wire': '/images/products/copper-wire.webp',
+  'cr-sheets': '/images/products/cr-sheets.webp',
+  'crc-bundle-scrap': '/images/products/crc-bundle-scrap.webp',
+  'fabricated-structures': '/images/products/fabricated-structures.webp',
+  'fasteners': '/images/products/fasteners.webp',
+  'forged-shafts': '/images/products/forged-shafts.webp',
+  'gi-pipes': '/images/products/gi-pipes.webp',
+  'gp-gc-sheets': '/images/products/gp-gc-sheets.webp',
+  'hms-scrap': '/images/products/hms-scrap.webp',
+  'hollow-sections': '/images/products/hollow-sections.webp',
+  'hr-coils': '/images/products/hr-coils.webp',
+  'hr-sheets': '/images/products/hr-sheets.webp',
+  'ms-angles': '/images/products/ms-angles.webp',
+  'ms-beams': '/images/products/ms-beams.webp',
+  'ms-channels': '/images/products/ms-channels.webp',
+  'ms-flats': '/images/products/ms-flats.webp',
+  'ms-pipes': '/images/products/ms-pipes.webp',
+  'ms-rounds': '/images/products/ms-rounds.webp',
+  'ms-square-bars': '/images/products/ms-square-bars.webp',
+  'rectangular-tubes': '/images/products/rectangular-tubes.webp',
+  'square-tubes': '/images/products/square-tubes.webp',
+  'tmt-bars': '/images/products/tmt-bars.webp',
+  'turning-scrap': '/images/products/turning-scrap.webp',
+  'wire-rods': '/images/products/wire-rods.webp',
+};
+
+export function productSlug(value: string) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export function getProductImage(product: string, fallbackMetal?: string) {
+  const slug = productSlug(product);
+  return productImageMap[slug] || (fallbackMetal ? `/images/metal-categories/${productSlug(fallbackMetal)}.webp` : '/images/metal-categories/steel.webp');
+}

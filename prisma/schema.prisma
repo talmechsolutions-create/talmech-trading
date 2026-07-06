@@ -1,0 +1,397 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserRegistration {
+  id                   String   @id
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  status               String   @default("PENDING_REVIEW")
+  accountType              String
+  roleCategory             String?
+  firmName                 String?
+  ownerName                String?
+  businessRole             String?
+  directorName             String?
+  gstNumber                String?
+  primaryMobile            String?
+  alternateMobile          String?
+  email                    String?
+  state                    String?
+  city                     String?
+  area                     String?
+  pincode                  String?
+  fullAddress              String?
+  liveLocation             String?
+  locationPermission       Boolean  @default(false)
+  tradingProducts          String?
+  monthlyTradingVolume     String?
+  monthlyTradingVolumeUnit String?
+  tradeScope               String?
+  annualTurnoverAmount     String?
+  annualTurnoverUnit       String?
+  tradingExperienceYears   String?
+  buyerSellerMix           String?
+  majorMarkets             String?
+  importExportCode         String?
+  paymentCycle             String?
+  warehouseDetails         String?
+  subscriptionRequired     Boolean  @default(false)
+  subscriptionPlan         String?
+  rejectionReason          String?
+  shopImages               Json?
+  documents                Json?
+  raw                      Json?
+
+  @@index([status])
+  @@index([accountType])
+  @@index([roleCategory])
+  @@index([primaryMobile])
+  @@index([email])
+  @@index([gstNumber])
+}
+
+model PublicLead {
+  id                String   @id
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  status            String   @default("New website lead")
+  source            String?
+  intent            String
+  companyName       String?
+  contactName       String?
+  phone             String?
+  email             String?
+  metal             String?
+  product           String?
+  grade             String?
+  quantity          String?
+  unit              String?
+  targetPrice       String?
+  state             String?
+  city              String?
+  area              String?
+  pincode           String?
+  dispatchReadiness String?
+  readyDispatchTime String?
+  productionLeadTime String?
+  deliveryEta       String?
+  technicalDetails  String?
+  mediaLinks        Json?
+  mediaGallery      Json?
+  raw               Json?
+  listing           MarketplaceListing?
+
+  @@index([intent])
+  @@index([status])
+  @@index([metal])
+  @@index([city])
+  @@index([pincode])
+}
+
+model MarketplaceListing {
+  id                  String   @id
+  leadId              String?  @unique
+  lead                PublicLead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  type                String
+  metal               String?
+  product             String?
+  grade               String?
+  quantity            String?
+  unit                String?
+  targetPrice         String?
+  priceType           String?
+  state               String?
+  city                String?
+  area                String?
+  pincode             String?
+  pickupAddress       String?
+  pickupLat           Float?
+  pickupLng           Float?
+  pickupMapUrl        String?
+  dispatchReadiness   String?
+  readyDispatchTime   String?
+  productionLeadTime  String?
+  deliveryEta         String?
+  technicalSummary    String?
+  mediaCount          Int      @default(0)
+  mediaGallery        Json?
+  previewImages       Json?
+  status              String   @default("Open")
+  lockStatus          String   @default("Available")
+  verified            Boolean  @default(false)
+  raw                 Json?
+  priceLocks          PriceLock[]
+
+  @@index([type])
+  @@index([metal])
+  @@index([city])
+  @@index([pincode])
+  @@index([status])
+}
+
+model PriceLock {
+  id                 String   @id
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  status             String
+  listingId          String?
+  listing            MarketplaceListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  buyerName          String?
+  buyerPhone         String?
+  buyerEmail         String?
+  metal              String?
+  product            String?
+  grade              String?
+  quantity           String?
+  unit               String?
+  offeredQuantity    String?
+  offeredUnit        String?
+  paymentMode        String?
+  requestedQuantity  Float?
+  requestedUnit      String?
+  rate               String?
+  materialValue      Float?
+  gstRate            Float?
+  gstHsn             String?
+  materialGst        Float?
+  buyerServiceFee    Float?
+  buyerServiceGst    Float?
+  sellerServiceFee   Float?
+  buyerPayableEstimate Float?
+  priceLockAdvance   Float?
+  fullPaymentAmount   Float?
+  paymentAmount       Float?
+  supplierNetEstimate Float?
+  balanceOnDispatch  Float?
+  buyerRemarks       String?
+  sellerRemarks      String?
+  rateBasis          String?
+  paymentOrderId     String?
+  paymentId          String?
+  paidAt             DateTime?
+  invoiceId          String?
+  terms              String?
+  logisticsRequired   Boolean?
+  logisticsProviderId String?
+  logisticsProviderName String?
+  logisticsVehicleId String?
+  logisticsVehicleName String?
+  logisticsDistanceKm Float?
+  logisticsEtaLabel String?
+  logisticsEtaBy String?
+  logisticsTransitMinutes Float?
+  logisticsCost       Float?
+  logisticsBuyerPayable Float?
+  logisticsSellerPayable Float?
+  logisticsPaymentResponsibility String?
+  logisticsPickup     String?
+  logisticsDrop       String?
+  logisticsScheduleDate String?
+  logisticsPickupLat Float?
+  logisticsPickupLng Float?
+  logisticsDropLat   Float?
+  logisticsDropLng   Float?
+  buyerDeliveryAddress String?
+  raw                Json?
+
+  @@index([status])
+  @@index([listingId])
+}
+
+model CrmLead {
+  id          String   @id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  sourceLeadId String?
+  leadType    String
+  stage       String   @default("New")
+  company     String?
+  contact     String?
+  phone       String?
+  email       String?
+  city        String?
+  state       String?
+  metal       String?
+  quantity    String?
+  frequency   String?
+  value       Float?
+  nextAction  String?
+  notes       String?
+  raw         Json?
+
+  @@index([leadType])
+  @@index([stage])
+  @@index([sourceLeadId])
+}
+
+model Invoice {
+  id        String   @id
+  createdAt DateTime @default(now())
+  status    String   @default("Draft")
+  leadId    String?
+  lockId    String?
+  amount    Float?
+  gstAmount Float?
+  total     Float?
+  customer  Json?
+  items     Json?
+  terms     String?
+  logisticsRequired   Boolean?
+  logisticsProviderId String?
+  logisticsProviderName String?
+  logisticsVehicleId String?
+  logisticsVehicleName String?
+  logisticsDistanceKm Float?
+  logisticsEtaLabel String?
+  logisticsEtaBy String?
+  logisticsTransitMinutes Float?
+  logisticsCost       Float?
+  logisticsBuyerPayable Float?
+  logisticsSellerPayable Float?
+  logisticsPaymentResponsibility String?
+  logisticsPickup     String?
+  logisticsDrop       String?
+  logisticsScheduleDate String?
+  raw       Json?
+}
+
+model Payment {
+  id        String   @id
+  createdAt DateTime @default(now())
+  status    String
+  provider  String?
+  providerOrderId String?
+  providerPaymentId String?
+  method    String?
+  paymentType String?
+  amount    Float?
+  currency  String   @default("INR")
+  lockId    String?
+  invoiceId String?
+  buyerName String?
+  buyerPhone String?
+  buyerEmail String?
+  paymentMode String?
+  raw       Json?
+
+  @@index([status])
+  @@index([lockId])
+  @@index([invoiceId])
+  @@index([providerPaymentId])
+}
+
+model AdminPayout {
+  id              String   @id
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  status          String   @default("DRAFT")
+  payoutType      String
+  payableToType   String
+  payableToName   String?
+  payableToPhone  String?
+  payableToEmail  String?
+  payableToGst    String?
+  payableToBank   Json?
+  lockId          String?
+  invoiceId       String?
+  paymentId       String?
+  logisticsProviderId String?
+  logisticsProviderName String?
+  amount          Float    @default(0)
+  gstAmount       Float    @default(0)
+  tdsAmount       Float    @default(0)
+  deductions      Float    @default(0)
+  netPayable      Float    @default(0)
+  currency        String   @default("INR")
+  paymentMode     String?
+  adminReference  String?
+  payoutInvoiceId String?
+  paidAt          DateTime?
+  notes           String?
+  raw             Json?
+
+  @@index([status])
+  @@index([payoutType])
+  @@index([lockId])
+  @@index([logisticsProviderId])
+}
+
+model EmailOutbox {
+  id        String   @id
+  createdAt DateTime @default(now())
+  status    String   @default("queued")
+  leadId    String?
+  to        String?
+  subject   String?
+  html      String?
+  providerError Json?
+}
+
+model AdminAction {
+  id        String   @id
+  createdAt DateTime @default(now())
+  actor     String?
+  action    String
+  entity    String?
+  entityId  String?
+  note      String?
+  raw       Json?
+}
+
+
+model LogisticsProvider {
+  id                  String   @id
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  status              String   @default("PENDING_CONTRACT")
+  companyName         String
+  contactName         String?
+  phone               String?
+  email               String?
+  website             String?
+  gstNumber           String?
+  panNumber           String?
+  address             String?
+  country             String   @default("India")
+  state               String?
+  city                String?
+  nearbyCities        Json?
+  serviceableCountries Json?
+  serviceableStates   Json?
+  serviceableCities   Json?
+  serviceTypes        Json?
+  specializations     Json?
+  deliveryType        String?
+  speed               String?
+  capacityMt          Float    @default(0)
+  fleetSize           Int      @default(0)
+  availabilityDates   Json?
+  unavailableDates    Json?
+  baseRate            Float    @default(0)
+  ratePerKm           Float    @default(0)
+  ratePerMt           Float    @default(0)
+  minimumCharge       Float    @default(0)
+  loadingCharge       Float    @default(0)
+  insurancePercent    Float    @default(0)
+  fuelSurchargePercent Float   @default(0)
+  gstPercent          Float    @default(0.18)
+  contractStatus      String   @default("NOT_SENT")
+  contractNotes       String?
+  paymentResponsibilityDefault String @default("BUYER")
+  adminNotes          String?
+  adminPricingLocked  Boolean  @default(true)
+  raw                 Json?
+
+  @@index([status])
+  @@index([city])
+  @@index([state])
+  @@index([contractStatus])
+}

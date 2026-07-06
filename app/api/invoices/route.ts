@@ -1,0 +1,1 @@
+import {NextResponse} from 'next/server';export async function POST(req:Request){const body=await req.json().catch(()=>({}));return NextResponse.json({success:true,invoiceNo:`TT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,invoice:body})}

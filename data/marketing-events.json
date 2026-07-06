@@ -1,0 +1,44 @@
+[
+  {
+    "id": "me-1783332690804-cdbc173a41e85",
+    "createdAt": "2026-07-06T10:11:30.804Z",
+    "eventType": "page_view",
+    "source": "localhost",
+    "medium": "referral",
+    "campaign": "",
+    "page": "/admin/whatsapp-uploads",
+    "keyword": "",
+    "city": "",
+    "role": "buyer",
+    "device": "desktop",
+    "viewport": "1920x1345"
+  },
+  {
+    "id": "me-1783332690792-b82800c09ca45",
+    "createdAt": "2026-07-06T10:11:30.792Z",
+    "eventType": "page_view",
+    "source": "localhost",
+    "medium": "referral",
+    "campaign": "",
+    "page": "/admin/whatsapp-uploads",
+    "keyword": "",
+    "city": "",
+    "role": "buyer",
+    "device": "desktop",
+    "viewport": "1920x1345"
+  },
+  {
+    "id": "me-1783332689242-980572aa36d49",
+    "createdAt": "2026-07-06T10:11:29.242Z",
+    "eventType": "page_view",
+    "source": "direct",
+    "medium": "organic",
+    "campaign": "",
+    "page": "/admin-login?next=%2Fadmin%2Fwhatsapp-uploads",
+    "keyword": "",
+    "city": "",
+    "role": "buyer",
+    "device": "desktop",
+    "viewport": "1920x1345"
+  }
+]

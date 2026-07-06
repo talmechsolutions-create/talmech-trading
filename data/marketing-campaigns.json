@@ -1,0 +1,32 @@
+[
+  {
+    "id": "mc-local-steel-buyers",
+    "createdAt": "2026-05-07T07:41:08.706Z",
+    "updatedAt": "2026-05-07T07:41:08.706Z",
+    "status": "Planned",
+    "channel": "Google Search + SEO",
+    "objective": "Buyer requirement leads",
+    "audience": "Fabricators, contractors, manufacturing procurement teams",
+    "region": "Pune, Chakan, Mumbai, Nashik, Indore, Bhopal",
+    "keywordTheme": "TMT bars, MS plates, MS channels, steel suppliers near me",
+    "landingPage": "/public-marketplace",
+    "budget": "Admin decides",
+    "owner": "Talmech Marketing",
+    "notes": "Start with high-intent local keywords and requirement form conversions."
+  },
+  {
+    "id": "mc-supplier-onboarding",
+    "createdAt": "2026-05-07T07:41:08.706Z",
+    "updatedAt": "2026-05-07T07:41:08.706Z",
+    "status": "Planned",
+    "channel": "LinkedIn + WhatsApp + Email",
+    "objective": "Supplier/dealer/trader onboarding",
+    "audience": "Stockists, mills, scrap yards, forging units, traders",
+    "region": "Maharashtra, MP, Gujarat, Delhi NCR",
+    "keywordTheme": "sell metal online, list steel stock, metal trader registration",
+    "landingPage": "/sell",
+    "budget": "Admin decides",
+    "owner": "Talmech Sales",
+    "notes": "Use LinkedIn for B2B credibility and WhatsApp for conversion follow-up."
+  }
+]

@@ -1,0 +1,4 @@
+import IndustryBuyerSearch from '@/components/IndustryBuyerSearch';
+import {getMetalProfile} from '@/lib/metalKnowledge';
+export const metadata={title:'Industry Buyer Finder',description:'Find regional metal buyer companies by industry and import them into Talmech CRM funnels.'};
+export default function IndustrySearchPage({searchParams}:{searchParams:{metal?:string;industry?:string}}){const profile=getMetalProfile(searchParams.metal||'steel');return <main className="container section"><span className="eyebrow">Lead generation engine</span><h1 className="pageTitle">Industry Buyer Finder</h1><p className="lead">Find manufacturers, fabricators, consumers and industrial buyers by metal use-case and city. Convert search results into your CRM funnel for cold calls, email and WhatsApp follow-up.</p><IndustryBuyerSearch profile={profile} defaultIndustry={searchParams.industry}/></main>}
