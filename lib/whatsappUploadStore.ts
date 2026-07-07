@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 import {
+  WhatsappAccountCreation,
   WhatsappUploadAdminPatch,
   WhatsappUploadInput,
   WhatsappUploadStatus,
@@ -13,6 +14,7 @@ import { maskMobile, sanitizeMultiline, sanitizeString } from '@/lib/validation'
 export const whatsappUploadsFile = path.join(process.cwd(), 'data', 'whatsapp-uploads.json');
 
 const statusSet = new Set<string>(WHATSAPP_STATUS_OPTIONS);
+const accountStatusSet = new Set(['Not Created', 'Account Created', 'Email Sent', 'Needs Follow-up']);
 
 function compactDate() {
   const now = new Date();
@@ -85,6 +87,37 @@ function cleanInput(input: Partial<WhatsappUploadInput>): WhatsappUploadInput {
   };
 }
 
+function normalizeAccountCreation(row: any): WhatsappAccountCreation | undefined {
+  if (!row || typeof row !== 'object') return undefined;
+  const status = accountStatusSet.has(String(row.status)) ? row.status : 'Not Created';
+  return {
+    status,
+    accountId: sanitizeString(row.accountId, 80),
+    accountType: sanitizeString(row.accountType, 100),
+    roleCategory: sanitizeString(row.roleCategory, 60),
+    adminCreated: row.adminCreated === undefined ? undefined : Boolean(row.adminCreated),
+    onboardingSource: row.onboardingSource === 'whatsapp-assisted' ? 'whatsapp-assisted' : undefined,
+    verificationStatus:
+      row.verificationStatus === 'Admin Created' || row.verificationStatus === 'Pending Profile Confirmation'
+        ? row.verificationStatus
+        : undefined,
+    profileConfirmationRequired:
+      row.profileConfirmationRequired === undefined ? undefined : Boolean(row.profileConfirmationRequired),
+    emailOtpRequired: row.emailOtpRequired === undefined ? undefined : Boolean(row.emailOtpRequired),
+    mobileOtpRequired: row.mobileOtpRequired === undefined ? undefined : Boolean(row.mobileOtpRequired),
+    activationStatus: row.activationStatus === 'activated' ? 'activated' : row.activationStatus === 'pending' ? 'pending' : undefined,
+    activationTokenExpiresAt: sanitizeString(row.activationTokenExpiresAt, 40),
+    createdAt: sanitizeString(row.createdAt, 40),
+    credentialsSentAt: sanitizeString(row.credentialsSentAt, 40),
+    emailLastAttemptAt: sanitizeString(row.emailLastAttemptAt, 40),
+    emailStatus: sanitizeString(row.emailStatus, 80),
+    emailProvider: sanitizeString(row.emailProvider, 80),
+    emailPreviewAvailable: row.emailPreviewAvailable === undefined ? undefined : Boolean(row.emailPreviewAvailable),
+    lastEmailError: sanitizeMultiline(row.lastEmailError, 500),
+    adminNote: sanitizeMultiline(row.adminNote, 800),
+  };
+}
+
 function normalizeSubmission(row: Partial<WhatsappUploadSubmission>): WhatsappUploadSubmission {
   const cleaned = cleanInput(row);
   const createdAt = sanitizeString(row.createdAt, 40) || new Date().toISOString();
@@ -106,6 +139,7 @@ function normalizeSubmission(row: Partial<WhatsappUploadSubmission>): WhatsappUp
           }))
           .slice(0, 50)
       : [{ status: 'Pending Review', note: 'Submission received from public WhatsApp upload form.', at: createdAt, by: 'system' }],
+    accountCreation: normalizeAccountCreation(row.accountCreation),
     source: 'whatsapp-assisted-upload',
   };
 }
@@ -166,7 +200,39 @@ export async function updateWhatsappUpload(submissionId: string, patch: Whatsapp
   return rows[index];
 }
 
+export async function updateWhatsappUploadAccountCreation(
+  submissionId: string,
+  accountCreation: WhatsappAccountCreation,
+  options: { note?: string; status?: WhatsappUploadStatus } = {}
+) {
+  const cleanId = sanitizeString(submissionId, 80);
+  const rows = await listWhatsappUploads();
+  const index = rows.findIndex((row) => row.submissionId === cleanId);
+  if (index < 0) return null;
+
+  const current = rows[index];
+  const now = new Date().toISOString();
+  const nextStatus = options.status && statusSet.has(options.status) ? options.status : current.status;
+  const note = sanitizeMultiline(options.note, 500);
+  const timeline =
+    nextStatus !== current.status || note
+      ? [...current.statusTimeline, { status: nextStatus, note, at: now, by: 'admin' as const }]
+      : current.statusTimeline;
+
+  rows[index] = normalizeSubmission({
+    ...current,
+    status: nextStatus,
+    updatedAt: now,
+    statusTimeline: timeline,
+    accountCreation: normalizeAccountCreation(accountCreation),
+  });
+
+  await writeJsonArray(whatsappUploadsFile, rows);
+  return rows[index];
+}
+
 export function toWhatsappUploadAdminRow(row: WhatsappUploadSubmission) {
+  const account = row.accountCreation;
   return {
     submissionId: row.submissionId,
     date: row.createdAt,
@@ -185,5 +251,10 @@ export function toWhatsappUploadAdminRow(row: WhatsappUploadSubmission) {
     quantity: [row.quantity, row.quantityUnit].filter(Boolean).join(' '),
     price: row.price || row.targetPrice || 'Not shared',
     status: row.status,
+    accountStatus: account?.status || 'Not Created',
+    accountId: account?.accountId || '',
+    accountType: account?.accountType || '',
+    credentialsSentAt: account?.credentialsSentAt || '',
+    emailDeliveryStatus: account?.emailStatus || '',
   };
 }

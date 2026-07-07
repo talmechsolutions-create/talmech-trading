@@ -37,7 +37,7 @@ export async function sendOrQueueEmail({ to, subject, html, leadId }: { to?: str
   if (!to) return { status: 'skipped', reason: 'No recipient email provided' };
   const row = { id: `EMAIL-${Date.now()}`, leadId, to, subject, html, createdAt: new Date().toISOString(), status: 'queued' };
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.NOTIFICATION_FROM_EMAIL || 'Talmech Trading <onboarding@resend.dev>';
+  const from = process.env.EMAIL_FROM || process.env.NOTIFICATION_FROM_EMAIL || 'Talmech Trading <onboarding@resend.dev>';
   if (apiKey) {
     try {
       const res = await fetch('https://api.resend.com/emails', {

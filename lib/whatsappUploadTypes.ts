@@ -45,6 +45,35 @@ export type WhatsappUploadSubmissionType = (typeof WHATSAPP_SUBMISSION_TYPE_OPTI
 export type WhatsappUploadLanguageCode = (typeof WHATSAPP_LANGUAGE_OPTIONS)[number]['code'];
 export type WhatsappUploadStatus = (typeof WHATSAPP_STATUS_OPTIONS)[number];
 
+export type WhatsappAccountCreationStatus =
+  | 'Not Created'
+  | 'Account Created'
+  | 'Email Sent'
+  | 'Needs Follow-up';
+
+export type WhatsappAccountCreation = {
+  status: WhatsappAccountCreationStatus;
+  accountId?: string;
+  accountType?: string;
+  roleCategory?: string;
+  adminCreated?: boolean;
+  onboardingSource?: 'whatsapp-assisted';
+  verificationStatus?: 'Admin Created' | 'Pending Profile Confirmation';
+  profileConfirmationRequired?: boolean;
+  emailOtpRequired?: boolean;
+  mobileOtpRequired?: boolean;
+  activationStatus?: 'pending' | 'activated';
+  activationTokenExpiresAt?: string;
+  createdAt?: string;
+  credentialsSentAt?: string;
+  emailLastAttemptAt?: string;
+  emailStatus?: string;
+  emailProvider?: string;
+  emailPreviewAvailable?: boolean;
+  lastEmailError?: string;
+  adminNote?: string;
+};
+
 export type WhatsappStatusTimelineItem = {
   status: WhatsappUploadStatus;
   note?: string;
@@ -102,6 +131,7 @@ export type WhatsappUploadSubmission = WhatsappUploadInput & {
   status: WhatsappUploadStatus;
   internalAdminNotes: string;
   statusTimeline: WhatsappStatusTimelineItem[];
+  accountCreation?: WhatsappAccountCreation;
   source: 'whatsapp-assisted-upload';
 };
 

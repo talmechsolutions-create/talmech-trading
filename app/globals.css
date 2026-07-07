@@ -1126,3 +1126,28 @@ body{background:var(--bg);color:var(--ink);font-feature-settings:'kern';}
 .status.manual_quote_required{background:#fff7ed;color:#9a3412}
 @media(max-width:1050px){.helpHeroGrid,.videoGuideGrid,.stepGuideGrid,.mistakeGrid,.transcriptGrid{grid-template-columns:1fr}.helpLanguageSwitcher{grid-template-columns:repeat(3,minmax(0,1fr))}.videoGuideBody dl{grid-template-columns:1fr}}
 @media(max-width:640px){.helpHero{padding:46px 0}.helpHero h1{font-size:40px;letter-spacing:0}.helpLanguageSwitcher{grid-template-columns:1fr}.contextHelpBox{display:grid}.contextHelpBox .btn{width:100%}.videoGuideActions{display:grid}.videoGuideActions .btn{width:100%}.helpSection{padding:38px 0}.helpSection>.sectionHead,.helpSection>.videoGuideGrid,.helpSection>.stepGuideGrid,.helpSection>.mistakeGrid,.helpSection>.transcriptGrid,.helpSection>.faqGrid{width:min(100% - 24px,1180px)}}
+
+.waDetailPanel{color:#0f172a}
+.waAccountSummaryGrid{margin-top:18px}
+.waAccountMini{margin:8px 0 0;color:#64748b;font-size:12px;line-height:1.45}
+.waAccountPanelIntro{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px}
+.waAccountPanelIntro h2{margin:10px 0 6px}
+.waAdminAccountGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.waAdminAccountGrid label{display:grid;gap:8px;font-weight:900;color:#0f172a}
+.waAdminAccountGrid input,.waAdminAccountGrid select,.waAdminAccountGrid textarea{width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px 13px;background:#fff;color:#0f172a;font:inherit}
+.waAdminAccountGrid textarea{min-height:110px;resize:vertical}
+.waAdminAccountGrid .span2{grid-column:span 2}
+.waAccountConfirmBox{border:1px solid #bbf7d0;background:#f0fdf4;color:#14532d;border-radius:14px;padding:14px;display:flex;justify-content:space-between;gap:14px;align-items:center}
+.waAccountConfirmBox p{margin:0;line-height:1.55}
+.waAccountStatusPanel{display:grid;gap:16px}
+.waAccountStatusGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 18px}
+.waSensitiveBox{border:1px solid #fdba74;background:#fff7ed;color:#9a3412;border-radius:14px;padding:14px;display:grid;gap:10px}
+.waSensitiveBox .muted{color:#9a3412}
+.waMonoInput{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:13px}
+.adminAssistedLoginBox{border:1px solid #dbeafe;background:#f8fbff;border-radius:18px;padding:16px;display:grid;gap:14px}
+.adminAssistedLoginBox h2{margin:8px 0 4px;color:#0f172a}
+.adminAssistedLoginBox .formGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.activateAccountPage{min-height:72vh;background:linear-gradient(135deg,#f8fafc,#eef6ff)}
+.activateAccountPanel{max-width:840px;margin:auto}
+.activateAccountPanel .pageTitle{font-size:clamp(34px,4vw,54px);letter-spacing:0}
+@media(max-width:760px){.waAccountPanelIntro,.waAccountConfirmBox{display:grid}.waAdminAccountGrid,.waAccountStatusGrid,.adminAssistedLoginBox .formGrid{grid-template-columns:1fr}.waAdminAccountGrid .span2{grid-column:auto}.waAccountConfirmBox .btn{width:100%}}

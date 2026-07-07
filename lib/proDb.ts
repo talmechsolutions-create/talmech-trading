@@ -37,6 +37,54 @@ async function withDb<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Prom
   try { return await fn(); } catch (err) { console.error('[Talmech DB fallback]', err); return fallback(); }
 }
 
+function objectOrEmpty(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, any>) : {};
+}
+
+function withUserRawFields(row: any) {
+  if (!row) return row;
+  const raw = objectOrEmpty(row.raw);
+  return { ...raw, ...row, raw: row.raw };
+}
+
+const userRegistrationColumns = new Set([
+  'status',
+  'accountType',
+  'roleCategory',
+  'firmName',
+  'ownerName',
+  'businessRole',
+  'directorName',
+  'gstNumber',
+  'primaryMobile',
+  'alternateMobile',
+  'email',
+  'state',
+  'city',
+  'area',
+  'pincode',
+  'fullAddress',
+  'liveLocation',
+  'locationPermission',
+  'tradingProducts',
+  'monthlyTradingVolume',
+  'monthlyTradingVolumeUnit',
+  'tradeScope',
+  'annualTurnoverAmount',
+  'annualTurnoverUnit',
+  'tradingExperienceYears',
+  'buyerSellerMix',
+  'majorMarkets',
+  'importExportCode',
+  'paymentCycle',
+  'warehouseDetails',
+  'subscriptionRequired',
+  'subscriptionPlan',
+  'rejectionReason',
+  'shopImages',
+  'documents',
+]);
+
 export async function listLeads() {
   return withDb(
     async () => (await prisma.publicLead.findMany({ orderBy: { createdAt: 'desc' } })).map(fromDbDates),
@@ -157,7 +205,7 @@ function userFileFor(accountType: string) {
 }
 
 export async function listUsers() {
-  return withDb(async () => (await prisma.userRegistration.findMany({ orderBy: { createdAt: 'desc' } })).map(fromDbDates), async () => {
+  return withDb(async () => (await prisma.userRegistration.findMany({ orderBy: { createdAt: 'desc' } })).map(fromDbDates).map(withUserRawFields), async () => {
     const [buyers, sellers, traders] = await Promise.all([readJsonArray(usersFiles.buyer), readJsonArray(usersFiles.seller), readJsonArray(usersFiles.trader)]);
     return [...buyers.map((x:any)=>({...x,table:'buyers'})),...sellers.map((x:any)=>({...x,table:'sellers'})),...traders.map((x:any)=>({...x,table:'traders'}))].sort((a:any,b:any)=>String(b.createdAt).localeCompare(String(a.createdAt)));
   });
@@ -171,7 +219,7 @@ export async function findUser(key: string) {
 export async function createUserRegistration(user: any) {
   return withDb(async () => {
     const existing = await prisma.userRegistration.findFirst({ where: { OR: [{primaryMobile:user.primaryMobile||'__none__'}, {email:user.email||'__none__'}, {gstNumber:user.gstNumber||'__none__'}] }});
-    if (existing) return { duplicate: fromDbDates(existing) };
+    if (existing) return { duplicate: withUserRawFields(fromDbDates(existing)) };
     const row = await prisma.userRegistration.create({ data: clean({
       id: user.id,
       createdAt: new Date(user.createdAt || Date.now()),
@@ -211,13 +259,41 @@ export async function createUserRegistration(user: any) {
       documents: user.documents,
       raw: user
     })});
-    return { user: fromDbDates(row) };
+    return { user: withUserRawFields(fromDbDates(row)) };
   }, async () => {
     const file = userFileFor(user.accountType || 'Buyer');
     const rows = await readJsonArray(file);
     const duplicate = rows.find((r:any)=>r.primaryMobile===user.primaryMobile || (user.email && r.email===user.email) || (user.gstNumber && r.gstNumber===user.gstNumber));
     if (duplicate) return { duplicate };
     rows.unshift(user); await writeJsonArray(file, rows); return { user };
+  });
+}
+
+export async function updateUserRegistrationRecord(id: string, patch: any) {
+  return withDb(async () => {
+    const existing = await prisma.userRegistration.findUnique({ where: { id } });
+    if (!existing) return null;
+    const data: Record<string, any> = {};
+    Object.entries(patch || {}).forEach(([key, value]) => {
+      if (userRegistrationColumns.has(key)) data[key] = value;
+    });
+    const raw = { ...objectOrEmpty((existing as any).raw), ...(patch || {}) };
+    const row = await prisma.userRegistration.update({
+      where: { id },
+      data: clean({ ...data, raw }),
+    });
+    return withUserRawFields(fromDbDates(row));
+  }, async () => {
+    for (const file of Object.values(usersFiles)) {
+      const rows = await readJsonArray(file);
+      const idx = rows.findIndex((r:any)=>r.id===id);
+      if (idx >= 0) {
+        rows[idx] = { ...rows[idx], ...(patch || {}), updatedAt: new Date().toISOString() };
+        await writeJsonArray(file, rows);
+        return rows[idx];
+      }
+    }
+    return null;
   });
 }
 

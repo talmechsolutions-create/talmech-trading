@@ -192,6 +192,8 @@ export default function UserAuthPanel() {
   const [message, setMessage] = useState('');
   const [pinMessage, setPinMessage] = useState('');
   const [form, setForm] = useState<any>(initialForm);
+  const [adminAssistedLogin, setAdminAssistedLogin] = useState({ login: '', password: '' });
+  const [adminAssistedLoading, setAdminAssistedLoading] = useState(false);
 
   const traderForm = useMemo(() => isTraderAccount(form.accountType), [form.accountType]);
 
@@ -346,6 +348,43 @@ export default function UserAuthPanel() {
     }
   }
 
+  async function signInAdminAssisted() {
+    if (!adminAssistedLogin.login || !adminAssistedLogin.password) {
+      setMessage('Enter the email or mobile and password for the admin-created account.');
+      return;
+    }
+    setAdminAssistedLoading(true);
+    setMessage('Signing in...');
+    const res = await fetch('/api/auth/admin-assisted-login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(adminAssistedLogin),
+    }).then((r) => r.json()).catch(() => ({ ok: false, error: 'Unable to sign in.' }));
+    setAdminAssistedLoading(false);
+    if (!res.ok) {
+      setMessage(res.error || 'Unable to sign in.');
+      return;
+    }
+
+    const profile = {
+      ...res.user,
+      name: res.user.ownerName,
+      role: res.user.accountType,
+      phone: res.user.primaryMobile,
+      company: res.user.firmName,
+      verified: res.user.status === 'APPROVED',
+    };
+    const safeProfile = persistProfile(profile);
+    setUser(safeProfile);
+    setStep(safeProfile.verified ? 'APPROVED' : 'PENDING');
+    setAdminAssistedLogin({ login: '', password: '' });
+    setMessage(
+      res.user.profileConfirmationRequired
+        ? 'Signed in. Please review your profile details with Talmech support before full marketplace activation.'
+        : 'Signed in successfully.'
+    );
+  }
+
   function signOut() {
     ['talmech-user', 'talmech-account-class', 'talmech-role', 'talmech-market-view', 'talmech-role-locked', 'talmech-trader-approved', 'talmech-preferred-account-type'].forEach((k) => localStorage.removeItem(k));
     setUser(null);
@@ -425,6 +464,18 @@ export default function UserAuthPanel() {
 
           {step === 'FORM' ? (
             <div className="formGrid">
+              <div className="span2 adminAssistedLoginBox">
+                <div>
+                  <span className="pill">Admin-assisted account</span>
+                  <h2>Sign in after activation</h2>
+                  <p className="muted">Use this only after Talmech admin creates your account from WhatsApp and you set your password through the activation link.</p>
+                </div>
+                <div className="formGrid">
+                  <label>Email or mobile<input className="input" value={adminAssistedLogin.login} onChange={(e) => setAdminAssistedLogin((x) => ({ ...x, login: e.target.value }))} placeholder="registered email or mobile" /></label>
+                  <label>Password<input className="input" type="password" value={adminAssistedLogin.password} onChange={(e) => setAdminAssistedLogin((x) => ({ ...x, password: e.target.value }))} autoComplete="current-password" /></label>
+                  <button className="btn span2" type="button" disabled={adminAssistedLoading} onClick={signInAdminAssisted}>{adminAssistedLoading ? 'Signing in...' : 'Sign in to admin-created account'}</button>
+                </div>
+              </div>
               <label>Account type
                 <select value={form.accountType} onChange={(e) => set('accountType', e.target.value)}>
                   <option>Buyer</option>

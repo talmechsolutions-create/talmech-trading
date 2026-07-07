@@ -22,6 +22,11 @@ type AdminRow = {
   quantity: string;
   price: string;
   status: WhatsappUploadStatus;
+  accountStatus: string;
+  accountId: string;
+  accountType: string;
+  credentialsSentAt: string;
+  emailDeliveryStatus: string;
 };
 
 const actionStatuses: WhatsappUploadStatus[] = [
@@ -35,6 +40,12 @@ const actionStatuses: WhatsappUploadStatus[] = [
 function shortDate(value: string) {
   if (!value) return '-';
   return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function accountPillClass(status: string) {
+  if (status === 'Email Sent' || status === 'Account Created') return 'pill green';
+  if (status === 'Needs Follow-up') return 'pill gold';
+  return 'pill';
 }
 
 export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: AdminRow[] }) {
@@ -86,6 +97,12 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
           <div className="card"><h2>{rows.filter((row) => row.status === 'Ready to Upload').length}</h2><p className="muted">Ready to Upload</p></div>
           <div className="card"><h2>{rows.filter((row) => row.status === 'Converted').length}</h2><p className="muted">Converted</p></div>
         </div>
+        <div className="grid cards4 waAccountSummaryGrid">
+          <div className="card"><h2>{rows.filter((row) => row.accountStatus === 'Not Created').length}</h2><p className="muted">Accounts not created</p></div>
+          <div className="card"><h2>{rows.filter((row) => row.accountStatus === 'Account Created' || row.accountStatus === 'Email Sent').length}</h2><p className="muted">Accounts created</p></div>
+          <div className="card"><h2>{rows.filter((row) => row.emailDeliveryStatus === 'sent').length}</h2><p className="muted">Activation emails sent</p></div>
+          <div className="card"><h2>{rows.filter((row) => row.accountStatus === 'Needs Follow-up').length}</h2><p className="muted">Needs follow-up</p></div>
+        </div>
 
         <div className="waAdminTableWrap">
           <table className="waAdminTable">
@@ -104,6 +121,7 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
                 <th>Quantity</th>
                 <th>Price</th>
                 <th>Status</th>
+                <th>Account Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -124,8 +142,14 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
                   <td>{row.price || '-'}</td>
                   <td><span className="pill">{row.status}</span></td>
                   <td>
+                    <span className={accountPillClass(row.accountStatus)}>{row.accountStatus || 'Not Created'}</span>
+                    {row.accountId && <p className="waAccountMini">{row.accountId}<br />{row.accountType || '-'}</p>}
+                    {row.credentialsSentAt && <p className="waAccountMini">Email: {row.emailDeliveryStatus || 'queued'}<br />{shortDate(row.credentialsSentAt)}</p>}
+                  </td>
+                  <td>
                     <div className="waAdminActions">
                       <Link className="btn secondary" href={`/admin/whatsapp-uploads/${row.submissionId}`}>View</Link>
+                      <Link className="btn secondary" href={`/admin/whatsapp-uploads/${row.submissionId}`}>{row.accountId ? 'Account Detail' : 'Create Account'}</Link>
                       {actionStatuses.map((status) => (
                         <button
                           className="btn secondary"
@@ -143,7 +167,7 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
               ))}
               {!rows.length && (
                 <tr>
-                  <td colSpan={14}>No WhatsApp-assisted submissions yet.</td>
+                  <td colSpan={15}>No WhatsApp-assisted submissions yet.</td>
                 </tr>
               )}
             </tbody>
