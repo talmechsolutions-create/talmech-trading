@@ -74,6 +74,16 @@ export type WhatsappAccountCreation = {
   adminNote?: string;
 };
 
+export type WhatsappListingCreation = {
+  status: 'Not Created' | 'Listing Created';
+  listingIds: string[];
+  accountId?: string;
+  lastListingId?: string;
+  lastListingType?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type WhatsappStatusTimelineItem = {
   status: WhatsappUploadStatus;
   note?: string;
@@ -132,6 +142,7 @@ export type WhatsappUploadSubmission = WhatsappUploadInput & {
   internalAdminNotes: string;
   statusTimeline: WhatsappStatusTimelineItem[];
   accountCreation?: WhatsappAccountCreation;
+  listingCreation?: WhatsappListingCreation;
   source: 'whatsapp-assisted-upload';
 };
 

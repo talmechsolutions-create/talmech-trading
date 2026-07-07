@@ -7,9 +7,24 @@ export const dynamic = 'force-dynamic';
 function publicDemo() {
   return marketplaceDemoListings.map((x:any, i) => ({id:`DEMO-${i+1}`,type:x.type,metal:x.metal,product:x.product,grade:x.grade,quantity:String(x.qty||'').split(' ')[0]||'',unit:String(x.qty||'').split(' ').slice(1).join(' ')||'',priceType:x.price,state:x.location?.split(', ').pop()||'',city:x.location?.split(', ')[0]||'',area:'',pincode:x.pincode,dispatchReadiness:x.dispatch==='Ready'||String(x.dispatch).includes('day')?'READY_STOCK':'MAKE_TO_ORDER',deliveryEta:x.dispatch,status:'Open',lockStatus:'Available',verified:x.verified,createdAt:new Date().toISOString(),demo:true}));
 }
+function isPublicListing(row:any) {
+  const raw = row?.raw || {};
+  const visibility = String(raw.listingVisibility || row.listingVisibility || 'public').toLowerCase();
+  const approval = String(raw.listingApprovalStatus || row.listingApprovalStatus || 'approved').toLowerCase();
+  return visibility === 'public' && !['pending', 'pending admin review', 'draft', 'private'].includes(approval);
+}
+function safePublicRow(row:any) {
+  const raw = row?.raw && typeof row.raw === 'object' ? { ...row.raw } : {};
+  [
+    'ownerUserId','accountId','ownerEmail','ownerMobile','contactPerson','email','mobile','alternateMobile',
+    'adminNote','whatsappSubmissionId','createdByAdmin','profileConfirmationRequired'
+  ].forEach((key) => delete raw[key]);
+  return { ...row, raw };
+}
 export async function GET(req: NextRequest) {
   const rows = await listListings(false);
-  const listings = [...rows, ...publicDemo()];
+  const publicRows = rows.filter(isPublicListing).map(safePublicRow);
+  const listings = [...publicRows, ...publicDemo()];
   if (req.nextUrl.searchParams.get('format') === 'csv') {
     const headers = ['id','leadId','createdAt','type','metal','product','grade','quantity','unit','priceType','state','city','area','pincode','dispatchReadiness','readyDispatchTime','productionLeadTime','deliveryEta','status','lockStatus','verified'];
     return new NextResponse(csv(rows, headers), {headers:{'content-type':'text/csv; charset=utf-8','content-disposition':'attachment; filename="talmech-marketplace-listings.csv"'}});

@@ -27,6 +27,8 @@ type AdminRow = {
   accountType: string;
   credentialsSentAt: string;
   emailDeliveryStatus: string;
+  listingStatus: string;
+  listingId: string;
 };
 
 const actionStatuses: WhatsappUploadStatus[] = [
@@ -85,11 +87,26 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
           </div>
           <div className="row">
             <Link className="btn secondary" href="/whatsapp-upload">Open public form</Link>
+            <Link className="btn" href="/admin/whatsapp-uploads/manual-listing">Create Client + Listing</Link>
             <button className="btn" type="button" onClick={refresh}>Refresh</button>
           </div>
         </div>
 
         {message && <p className="notice">{message}</p>}
+
+        <div className="waAdminModeStrip">
+          <article>
+            <span className="pill">1</span>
+            <h2>WhatsApp submissions</h2>
+            <p className="muted">Review public WhatsApp-assisted uploads, then create the client account and listing from a real submission row.</p>
+          </article>
+          <article>
+            <span className="pill gold">2</span>
+            <h2>Manual admin creation</h2>
+            <p className="muted">Create a client account and listing even when there are zero WhatsApp submissions.</p>
+            <Link className="btn secondary" href="/admin/whatsapp-uploads/manual-listing">Manual Listing</Link>
+          </article>
+        </div>
 
         <div className="grid cards4">
           <div className="card"><h2>{rows.length}</h2><p className="muted">Total submissions</p></div>
@@ -122,6 +139,7 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
                 <th>Price</th>
                 <th>Status</th>
                 <th>Account Status</th>
+                <th>Listing Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -147,6 +165,10 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
                     {row.credentialsSentAt && <p className="waAccountMini">Email: {row.emailDeliveryStatus || 'queued'}<br />{shortDate(row.credentialsSentAt)}</p>}
                   </td>
                   <td>
+                    <span className={row.listingStatus === 'Listing Created' ? 'pill green' : 'pill'}>{row.listingStatus || 'Not Created'}</span>
+                    {row.listingId && <p className="waAccountMini">{row.listingId}</p>}
+                  </td>
+                  <td>
                     <div className="waAdminActions">
                       <Link className="btn secondary" href={`/admin/whatsapp-uploads/${row.submissionId}`}>View</Link>
                       <Link className="btn secondary" href={`/admin/whatsapp-uploads/${row.submissionId}`}>{row.accountId ? 'Account Detail' : 'Create Account'}</Link>
@@ -167,7 +189,10 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
               ))}
               {!rows.length && (
                 <tr>
-                  <td colSpan={15}>No WhatsApp-assisted submissions yet.</td>
+                  <td colSpan={16}>
+                    No WhatsApp-assisted submissions yet.
+                    <div className="waEmptyAction"><Link className="btn" href="/admin/whatsapp-uploads/manual-listing">Create Client + Listing manually</Link></div>
+                  </td>
                 </tr>
               )}
             </tbody>

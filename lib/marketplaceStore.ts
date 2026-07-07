@@ -12,7 +12,7 @@ async function ensureFile(file: string) {
 
 export async function readJsonArray(file: string) {
   await ensureFile(file);
-  try { return JSON.parse((await fs.readFile(file, 'utf8')) || '[]'); } catch { return []; }
+  try { return JSON.parse(((await fs.readFile(file, 'utf8')) || '[]').replace(/^\uFEFF/, '')); } catch { return []; }
 }
 
 export async function writeJsonArray(file: string, rows: any[]) {

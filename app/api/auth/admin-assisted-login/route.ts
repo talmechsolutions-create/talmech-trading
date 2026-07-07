@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientKey } from '@/lib/adminSecurity';
 import { loginAdminAssistedAccount } from '@/lib/adminAssistedAccounts';
+import { setClientSessionCookie } from '@/lib/clientAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,5 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   clearFailure(key);
-  return NextResponse.json(result);
+  const res = NextResponse.json(result);
+  setClientSessionCookie(res, result.user);
+  return res;
 }

@@ -99,8 +99,8 @@ export default function AdminAccountActivation({ token }: { token: string }) {
             <div className="success">
               {message}
               <div className="waActionRow" style={{ marginTop: 14 }}>
-                <a className="btn" href="/signin">Continue to sign in</a>
-                <a className="btn secondary" href="/post-requirement">Post requirement</a>
+                <a className="btn" href="/account">Open client workspace</a>
+                <a className="btn secondary" href="/signin">Go to sign in</a>
               </div>
             </div>
           ) : (

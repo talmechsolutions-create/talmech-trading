@@ -176,7 +176,7 @@ export async function createListing(listing: any) {
       status: listing.status || 'Open',
       lockStatus: listing.lockStatus || 'Available',
       verified: Boolean(listing.verified),
-      raw: listing
+      raw: listing.raw || listing
     })});
     return fromDbDates(row);
   }, async () => {
@@ -184,9 +184,16 @@ export async function createListing(listing: any) {
   });
 }
 
+export async function findListing(id: string) {
+  const rows = await listListings(false);
+  return rows.find((row: any) => row.id === id) || null;
+}
+
 export async function updateListing(id: string, patch: any) {
   return withDb(async () => {
-    const row = await prisma.marketplaceListing.update({ where: { id }, data: clean({ ...patch, updatedAt: new Date(), raw: patch }) });
+    const existing = await prisma.marketplaceListing.findUnique({ where: { id } });
+    if (!existing) return null;
+    const row = await prisma.marketplaceListing.update({ where: { id }, data: clean({ ...patch, updatedAt: new Date(), raw: { ...objectOrEmpty((existing as any).raw), ...(patch.raw || patch) } }) });
     return fromDbDates(row);
   }, async () => {
     const rows = await readJsonArray(listingsFile); const idx = rows.findIndex((r:any)=>r.id===id); if (idx < 0) return null; rows[idx] = {...rows[idx], ...patch, updatedAt: new Date().toISOString()}; await writeJsonArray(listingsFile, rows); return rows[idx];

@@ -3,6 +3,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import {
   WhatsappAccountCreation,
+  WhatsappListingCreation,
   WhatsappUploadAdminPatch,
   WhatsappUploadInput,
   WhatsappUploadStatus,
@@ -27,7 +28,7 @@ function createSubmissionId() {
 
 async function readJsonArray<T>(file: string): Promise<T[]> {
   try {
-    const raw = await fs.readFile(file, 'utf8');
+    const raw = (await fs.readFile(file, 'utf8')).replace(/^\uFEFF/, '');
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error: any) {
@@ -118,6 +119,22 @@ function normalizeAccountCreation(row: any): WhatsappAccountCreation | undefined
   };
 }
 
+function normalizeListingCreation(row: any): WhatsappListingCreation | undefined {
+  if (!row || typeof row !== 'object') return undefined;
+  const listingIds = Array.isArray(row.listingIds)
+    ? row.listingIds.map((id: unknown) => sanitizeString(id, 80)).filter(Boolean).slice(0, 25)
+    : [];
+  return {
+    status: row.status === 'Listing Created' || listingIds.length ? 'Listing Created' : 'Not Created',
+    listingIds,
+    accountId: sanitizeString(row.accountId, 80),
+    lastListingId: sanitizeString(row.lastListingId, 80),
+    lastListingType: sanitizeString(row.lastListingType, 80),
+    createdAt: sanitizeString(row.createdAt, 40),
+    updatedAt: sanitizeString(row.updatedAt, 40),
+  };
+}
+
 function normalizeSubmission(row: Partial<WhatsappUploadSubmission>): WhatsappUploadSubmission {
   const cleaned = cleanInput(row);
   const createdAt = sanitizeString(row.createdAt, 40) || new Date().toISOString();
@@ -140,6 +157,7 @@ function normalizeSubmission(row: Partial<WhatsappUploadSubmission>): WhatsappUp
           .slice(0, 50)
       : [{ status: 'Pending Review', note: 'Submission received from public WhatsApp upload form.', at: createdAt, by: 'system' }],
     accountCreation: normalizeAccountCreation(row.accountCreation),
+    listingCreation: normalizeListingCreation(row.listingCreation),
     source: 'whatsapp-assisted-upload',
   };
 }
@@ -231,6 +249,37 @@ export async function updateWhatsappUploadAccountCreation(
   return rows[index];
 }
 
+export async function updateWhatsappUploadListingCreation(
+  submissionId: string,
+  listingCreation: WhatsappListingCreation,
+  options: { note?: string; status?: WhatsappUploadStatus } = {}
+) {
+  const cleanId = sanitizeString(submissionId, 80);
+  const rows = await listWhatsappUploads();
+  const index = rows.findIndex((row) => row.submissionId === cleanId);
+  if (index < 0) return null;
+
+  const current = rows[index];
+  const now = new Date().toISOString();
+  const nextStatus = options.status && statusSet.has(options.status) ? options.status : current.status;
+  const note = sanitizeMultiline(options.note, 500);
+  const timeline =
+    nextStatus !== current.status || note
+      ? [...current.statusTimeline, { status: nextStatus, note, at: now, by: 'admin' as const }]
+      : current.statusTimeline;
+
+  rows[index] = normalizeSubmission({
+    ...current,
+    status: nextStatus,
+    updatedAt: now,
+    statusTimeline: timeline,
+    listingCreation: normalizeListingCreation(listingCreation),
+  });
+
+  await writeJsonArray(whatsappUploadsFile, rows);
+  return rows[index];
+}
+
 export function toWhatsappUploadAdminRow(row: WhatsappUploadSubmission) {
   const account = row.accountCreation;
   return {
@@ -256,5 +305,7 @@ export function toWhatsappUploadAdminRow(row: WhatsappUploadSubmission) {
     accountType: account?.accountType || '',
     credentialsSentAt: account?.credentialsSentAt || '',
     emailDeliveryStatus: account?.emailStatus || '',
+    listingStatus: row.listingCreation?.status || 'Not Created',
+    listingId: row.listingCreation?.lastListingId || row.listingCreation?.listingIds?.[0] || '',
   };
 }

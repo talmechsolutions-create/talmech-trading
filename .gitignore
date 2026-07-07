@@ -22,6 +22,7 @@ data/*.json
 
 package-lock.backup.json
 *.zip
+*.mp4
 
 public/*.mp4
 public/videos/*.mp4

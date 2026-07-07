@@ -96,6 +96,10 @@ function createSafeLocalUser(profile: any, roleHint?: string) {
     status: profile?.status || 'PENDING_REVIEW',
     verified: profile?.status === 'APPROVED' || Boolean(profile?.verified),
     traderAccess: trader && (profile?.status === 'APPROVED' || profile?.verified === true),
+    adminCreated: Boolean(profile?.adminCreated),
+    onboardingSource: profile?.onboardingSource || '',
+    mustChangePassword: Boolean(profile?.mustChangePassword),
+    profileConfirmationRequired: profile?.profileConfirmationRequired === undefined ? undefined : Boolean(profile?.profileConfirmationRequired),
   };
 }
 
@@ -433,6 +437,7 @@ export default function UserAuthPanel() {
 
   if (user && step === 'PENDING') {
     const trader = isTraderAccount(user.accountType || user.role);
+    const adminAssisted = user.adminCreated || ['whatsapp-assisted', 'manual-admin-listing'].includes(user.onboardingSource);
     return (
       <section className="section">
         <div className="container">
@@ -440,8 +445,9 @@ export default function UserAuthPanel() {
             <span className="eyebrow">{trader ? 'Trader approval pending' : 'Verification pending'}</span>
             <h1 className="pageTitle">Your Talmech account is under review.</h1>
             <p className="muted">Firm: {user.firmName || user.company} • Account: {user.accountType || user.role} • Status: {user.status || 'PENDING_REVIEW'}</p>
-            <p className="notice">{trader ? 'Trader accounts need extra commercial review because they can access both buying and selling workflows.' : 'Marketplace posting and listing access opens after admin verification.'}</p>
+            <p className="notice">{adminAssisted ? 'Your admin-created workspace is available. Please review your profile details; Talmech admin can still assist while confirmation is pending.' : trader ? 'Trader accounts need extra commercial review because they can access both buying and selling workflows.' : 'Marketplace posting and listing access opens after admin verification.'}</p>
             <div className="row" style={{ justifyContent: 'flex-start' }}>
+              {adminAssisted && <a className="btn" href="/account">Open client workspace</a>}
               <button className="btn" onClick={checkStatus}>Check approval status</button>
               <a className="btn secondary" href="/how-it-works">Watch onboarding guide</a>
               <button className="btn dark" onClick={signOut}>Sign out</button>
@@ -467,8 +473,8 @@ export default function UserAuthPanel() {
               <div className="span2 adminAssistedLoginBox">
                 <div>
                   <span className="pill">Admin-assisted account</span>
-                  <h2>Sign in after activation</h2>
-                  <p className="muted">Use this only after Talmech admin creates your account from WhatsApp and you set your password through the activation link.</p>
+                  <h2>Sign in to admin-created account</h2>
+                  <p className="muted">Use the password you set from an activation link or the temporary password Talmech admin shared for a manually created account.</p>
                 </div>
                 <div className="formGrid">
                   <label>Email or mobile<input className="input" value={adminAssistedLogin.login} onChange={(e) => setAdminAssistedLogin((x) => ({ ...x, login: e.target.value }))} placeholder="registered email or mobile" /></label>

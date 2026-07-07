@@ -24,6 +24,7 @@ export default function PublicHeader() {
   const [role, setRole] = useState('');
   const [accountClass, setAccountClass] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     const sync = () => {
@@ -59,7 +60,18 @@ export default function PublicHeader() {
     setRole(next);
   }
 
+  function signOut() {
+    ['talmech-user', 'talmech-account-class', 'talmech-role', 'talmech-market-view', 'talmech-role-locked', 'talmech-trader-approved', 'talmech-preferred-account-type'].forEach((key) => localStorage.removeItem(key));
+    fetch('/api/auth/client-logout', { method: 'POST' }).catch(() => {});
+    setUser(null);
+    setRole('');
+    setAccountClass('');
+    setProfileOpen(false);
+    window.dispatchEvent(new Event('talmech-role-change'));
+  }
+
   const profileLabel = isTrader ? 'Trader' : role === 'seller' ? 'Seller' : role === 'buyer' ? 'Buyer' : 'Account';
+  const displayName = user?.firmName || user?.company || user?.ownerName || user?.name || profileLabel;
 
   return (
     <header className="tmHeader">
@@ -86,10 +98,22 @@ export default function PublicHeader() {
               ) : role ? <span className="tmModeChip">{role === 'seller' ? 'Seller mode' : 'Buyer mode'}</span> : null}
 
               {user ? (
-                <Link href="/signin" className="tmUserPill" onClick={() => setMenuOpen(false)}>
-                  <span className="tmAvatar">{profileLabel.slice(0, 1)}</span>
-                  <span className="tmUserText"><b>{profileLabel}</b>{status && <small>{status}</small>}</span>
-                </Link>
+                <div className="tmProfileMenu">
+                  <button type="button" className="tmUserPill" onClick={() => setProfileOpen((open) => !open)}>
+                    <span className="tmAvatar">{displayName.slice(0, 1).toUpperCase()}</span>
+                    <span className="tmUserText"><b>{displayName}</b>{status && <small>{status} / {profileLabel}</small>}</span>
+                  </button>
+                  {profileOpen && (
+                    <div className="tmProfileDropdown">
+                      <Link href="/account" onClick={() => { setMenuOpen(false); setProfileOpen(false); }}>Dashboard</Link>
+                      <Link href="/account/profile" onClick={() => { setMenuOpen(false); setProfileOpen(false); }}>Profile</Link>
+                      <Link href="/account/listings" onClick={() => { setMenuOpen(false); setProfileOpen(false); }}>My Listings</Link>
+                      <Link href="/account/requirements" onClick={() => { setMenuOpen(false); setProfileOpen(false); }}>Requirements</Link>
+                      <Link href="/account/help" onClick={() => { setMenuOpen(false); setProfileOpen(false); }}>Help</Link>
+                      <button type="button" onClick={signOut}>Sign out</button>
+                    </div>
+                  )}
+                </div>
               ) : <Link href="/signin" className="tmSignin" onClick={() => setMenuOpen(false)}>Sign in</Link>}
             </div>
           </nav>

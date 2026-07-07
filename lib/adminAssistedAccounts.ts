@@ -138,13 +138,13 @@ function activationUrl(token: string) {
   return `${appBaseUrl()}/activate-account?token=${encodeURIComponent(token)}`;
 }
 
-function passwordHash(password: string) {
+export function hashAdminAssistedPassword(password: string) {
   const salt = randomBytes(16).toString('hex');
   const hash = scryptSync(password, salt, 64).toString('hex');
   return { passwordHash: hash, passwordSalt: salt, passwordKdf: 'scrypt' };
 }
 
-function verifyPassword(password: string, user: any) {
+export function verifyAdminAssistedPassword(password: string, user: any) {
   const hash = sanitizeString(user?.passwordHash, 200);
   const salt = sanitizeString(user?.passwordSalt, 80);
   if (!hash || !salt) return false;
@@ -444,7 +444,7 @@ export async function activateAdminAssistedAccount(token: string, password: stri
 
   if (!user) return { ok: false, status: 404, error: 'Activation link is invalid or expired.' };
 
-  const hashed = passwordHash(password);
+  const hashed = hashAdminAssistedPassword(password);
   const updated = await updateUserRegistrationRecord(user.id, {
     ...hashed,
     passwordSetAt: new Date().toISOString(),
@@ -465,14 +465,43 @@ export async function loginAdminAssistedAccount(login: string, password: string)
   const cleanLogin = sanitizeString(login, 254);
   const lookup = cleanLogin.includes('@') ? normalizeEmail(cleanLogin) : normalizeIndianMobile(cleanLogin);
   const user = await findUser(lookup);
-  if (!user || user.adminCreated !== true || user.onboardingSource !== 'whatsapp-assisted') {
+  if (!user || user.adminCreated !== true || !['whatsapp-assisted', 'manual-admin-listing'].includes(user.onboardingSource)) {
     return { ok: false, status: 401, error: 'Invalid admin-assisted account login.' };
   }
   if (user.activationStatus !== 'activated' || !user.passwordHash) {
     return { ok: false, status: 403, error: 'Activate this admin-created account before signing in.' };
   }
-  if (!verifyPassword(password, user)) {
+  if (!verifyAdminAssistedPassword(password, user)) {
     return { ok: false, status: 401, error: 'Invalid admin-assisted account login.' };
   }
   return { ok: true, user: safeAccount(user) };
+}
+
+export async function changeAdminAssistedAccountPassword(userId: string, currentPassword: string, nextPassword: string) {
+  const user = await findUser(userId);
+  if (!user || user.adminCreated !== true || !['whatsapp-assisted', 'manual-admin-listing'].includes(user.onboardingSource)) {
+    return { ok: false, status: 401, error: 'Admin-created account sign-in required.' };
+  }
+  if (!verifyAdminAssistedPassword(currentPassword, user)) {
+    return { ok: false, status: 401, error: 'Current password is incorrect.' };
+  }
+  if (String(nextPassword || '').length < 12) {
+    return { ok: false, status: 400, error: 'New password must be at least 12 characters.' };
+  }
+  if (currentPassword === nextPassword) {
+    return { ok: false, status: 400, error: 'Choose a new password different from the temporary password.' };
+  }
+
+  const hashed = hashAdminAssistedPassword(nextPassword);
+  const updated = await updateUserRegistrationRecord(user.id, {
+    ...hashed,
+    passwordSetAt: new Date().toISOString(),
+    activationStatus: 'activated',
+    activationTokenHash: '',
+    activationTokenExpiresAt: '',
+    mustChangePassword: false,
+    profileConfirmationRequired: true,
+  });
+
+  return { ok: true, user: safeAccount(updated || user) };
 }

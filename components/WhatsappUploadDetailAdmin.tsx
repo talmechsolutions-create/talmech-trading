@@ -46,6 +46,41 @@ type AccountForm = {
   adminNote: string;
 };
 
+type ListingForm = {
+  accountId: string;
+  firmName: string;
+  contactPerson: string;
+  mobile: string;
+  email: string;
+  role: string;
+  submissionType: string;
+  listingType: string;
+  metal: string;
+  product: string;
+  grade: string;
+  productForm: string;
+  sizeOrSpecification: string;
+  quantity: string;
+  quantityUnit: string;
+  price: string;
+  priceUnit: string;
+  targetPrice: string;
+  taxStatus: string;
+  stockStatus: string;
+  minimumOrderQuantity: string;
+  certificateAvailable: string;
+  certificateRequired: string;
+  photosAvailable: string;
+  dispatchLocation: string;
+  deliveryLocation: string;
+  city: string;
+  state: string;
+  deliveryTimeline: string;
+  applicationOrUse: string;
+  remarks: string;
+  listingVisibility: string;
+};
+
 function accountTypeForRole(role: string) {
   const lower = role.toLowerCase();
   if (lower.includes('trader')) return 'Trader - buyer and seller access';
@@ -83,6 +118,43 @@ function initialAccountForm(submission: WhatsappUploadSubmission): AccountForm {
   };
 }
 
+function initialListingForm(submission: WhatsappUploadSubmission): ListingForm {
+  return {
+    accountId: submission.accountCreation?.accountId || '',
+    firmName: submission.firmName || '',
+    contactPerson: submission.fullName || '',
+    mobile: submission.mobile || '',
+    email: submission.email || '',
+    role: submission.role || '',
+    submissionType: submission.submissionType || '',
+    listingType: submission.role === 'Buyer' || submission.submissionType === 'Buy requirement / RFQ' ? 'Buy requirement' : 'Sell listing',
+    metal: submission.finalMetalLabel || submission.selectedMetal || submission.customMetal || '',
+    product: submission.finalProductLabel || submission.selectedProduct || submission.customProduct || '',
+    grade: submission.finalGradeLabel || submission.selectedGrade || submission.customGrade || '',
+    productForm: submission.finalProductFormLabel || submission.selectedProductForm || submission.customProductForm || '',
+    sizeOrSpecification: submission.sizeOrSpecification || '',
+    quantity: submission.quantity || '',
+    quantityUnit: submission.quantityUnit || 'KG',
+    price: submission.price || '',
+    priceUnit: submission.priceUnit || '',
+    targetPrice: submission.targetPrice || '',
+    taxStatus: submission.taxStatus || '',
+    stockStatus: submission.stockStatus || '',
+    minimumOrderQuantity: submission.minimumOrderQuantity || '',
+    certificateAvailable: submission.certificateAvailable || '',
+    certificateRequired: submission.certificateRequired || '',
+    photosAvailable: submission.photosAvailable || '',
+    dispatchLocation: submission.dispatchLocation || '',
+    deliveryLocation: submission.deliveryLocation || '',
+    city: submission.city || '',
+    state: submission.state || '',
+    deliveryTimeline: submission.deliveryTimeline || '',
+    applicationOrUse: submission.applicationOrUse || '',
+    remarks: submission.remarks || '',
+    listingVisibility: 'public',
+  };
+}
+
 function accountPillClass(account?: WhatsappAccountCreation) {
   if (!account?.accountId) return 'pill';
   if (account.status === 'Needs Follow-up') return 'pill gold';
@@ -100,6 +172,9 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
   const [accountSaving, setAccountSaving] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
   const [manualActivationUrl, setManualActivationUrl] = useState('');
+  const [listingForm, setListingForm] = useState<ListingForm>(() => initialListingForm(submission));
+  const [listingSaving, setListingSaving] = useState(false);
+  const [allowAnotherListing, setAllowAnotherListing] = useState(false);
 
   async function save() {
     setSaving(true);
@@ -124,6 +199,10 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
       if (key === 'role') next.accountType = accountTypeForRole(value);
       return next;
     });
+  }
+
+  function setListingField(key: keyof ListingForm, value: string) {
+    setListingForm((form) => ({ ...form, [key]: value }));
   }
 
   async function createAccount() {
@@ -151,6 +230,7 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
       setCurrent(res.submission);
       setStatus(res.submission.status);
       setInternalAdminNotes(res.submission.internalAdminNotes || '');
+      setListingForm((form) => ({ ...form, accountId: res.submission.accountCreation?.accountId || form.accountId }));
     }
     setManualActivationUrl(res.manualActivationUrl || '');
     setMessage(res.manualActivationUrl
@@ -203,6 +283,38 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
     ].join('\n');
     await navigator.clipboard.writeText(instructions);
     setMessage('Login instructions copied.');
+  }
+
+  async function createListing() {
+    if (current.listingCreation?.listingIds?.length && !allowAnotherListing) {
+      setMessage('A listing is already linked. Click Create another listing first if this submission needs another listing.');
+      return;
+    }
+    if (!window.confirm('Create a marketplace listing or requirement from this WhatsApp submission?')) return;
+
+    setListingSaving(true);
+    const res = await fetch(`/api/admin/whatsapp-uploads/${encodeURIComponent(current.submissionId)}/create-listing`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ...listingForm,
+        accountId: listingForm.accountId || current.accountCreation?.accountId || '',
+        allowAnother: allowAnotherListing,
+      }),
+    }).then((response) => response.json()).catch(() => ({ ok: false, error: 'Unable to create listing.' }));
+    setListingSaving(false);
+
+    if (!res.ok) {
+      setMessage(res.error || 'Unable to create listing.');
+      return;
+    }
+
+    if (res.submission) {
+      setCurrent(res.submission);
+      setStatus(res.submission.status);
+    }
+    setAllowAnotherListing(false);
+    setMessage(`Listing ${res.listing?.id || ''} created from WhatsApp submission.`);
   }
 
   return (
@@ -363,6 +475,82 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
               <div className="span2 waAccountConfirmBox">
                 <p><b>Security:</b> No permanent password will be emailed. The user receives an activation link and sets a password without OTP for this admin-created setup only.</p>
                 <button className="btn" type="button" disabled={accountSaving} onClick={createAccount}>{accountSaving ? 'Creating account...' : 'Create Account'}</button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        <section className="waDetailPanel wide waListingCreationPanel">
+          <div className="waAccountPanelIntro">
+            <div>
+              <span className={current.listingCreation?.status === 'Listing Created' ? 'pill green' : 'pill'}>{current.listingCreation?.status || 'Not Created'}</span>
+              <h2>Create Listing / Requirement from WhatsApp Submission</h2>
+              <p className="muted">Create a public, draft, or admin-created listing from the reviewed WhatsApp details. This does not auto-publish duplicate listings.</p>
+            </div>
+            {current.listingCreation?.lastListingId && <Link className="btn secondary" href={`/admin/listings/${current.listingCreation.lastListingId}`}>Open Admin Listing</Link>}
+          </div>
+
+          {current.listingCreation?.listingIds?.length ? (
+            <div className="waAccountStatusPanel">
+              <div className="waAccountStatusGrid">
+                <Field label="Latest listing ID" value={current.listingCreation.lastListingId} />
+                <Field label="Linked account ID" value={current.listingCreation.accountId || current.accountCreation?.accountId} />
+                <Field label="Listing type" value={current.listingCreation.lastListingType} />
+                <Field label="Created listings" value={current.listingCreation.listingIds.join(', ')} />
+              </div>
+              <div className="waActionRow">
+                <Link className="btn" href={`/admin/listings/${current.listingCreation.lastListingId}`}>Open Admin Listing</Link>
+                <Link className="btn secondary" href="/public-marketplace">Open Marketplace</Link>
+                <button className="btn secondary" type="button" onClick={() => setAllowAnotherListing(true)}>Create another listing</button>
+              </div>
+            </div>
+          ) : null}
+
+          {(!current.listingCreation?.listingIds?.length || allowAnotherListing) && (
+            <div className="waAdminAccountGrid">
+              <label>Linked account ID<input className="input" value={listingForm.accountId || current.accountCreation?.accountId || ''} onChange={(event) => setListingField('accountId', event.target.value)} placeholder="Optional but recommended" /></label>
+              <label>Listing type<select value={listingForm.listingType} onChange={(event) => setListingField('listingType', event.target.value)}>
+                <option>Sell listing</option>
+                <option>Buy requirement</option>
+                <option>Scrap listing</option>
+                <option>Trader deal listing</option>
+              </select></label>
+              <label>Firm name<input className="input" value={listingForm.firmName} onChange={(event) => setListingField('firmName', event.target.value)} /></label>
+              <label>Contact person<input className="input" value={listingForm.contactPerson} onChange={(event) => setListingField('contactPerson', event.target.value)} /></label>
+              <label>Mobile<input className="input" value={listingForm.mobile} onChange={(event) => setListingField('mobile', event.target.value)} /></label>
+              <label>Email<input className="input" value={listingForm.email} onChange={(event) => setListingField('email', event.target.value)} /></label>
+              <label>Role<input className="input" value={listingForm.role} onChange={(event) => setListingField('role', event.target.value)} /></label>
+              <label>Submission type<input className="input" value={listingForm.submissionType} onChange={(event) => setListingField('submissionType', event.target.value)} /></label>
+              <label>Metal<input className="input" value={listingForm.metal} onChange={(event) => setListingField('metal', event.target.value)} /></label>
+              <label>Product<input className="input" value={listingForm.product} onChange={(event) => setListingField('product', event.target.value)} /></label>
+              <label>Grade<input className="input" value={listingForm.grade} onChange={(event) => setListingField('grade', event.target.value)} /></label>
+              <label>Product form<input className="input" value={listingForm.productForm} onChange={(event) => setListingField('productForm', event.target.value)} /></label>
+              <label className="span2">Size / specification<input className="input" value={listingForm.sizeOrSpecification} onChange={(event) => setListingField('sizeOrSpecification', event.target.value)} /></label>
+              <label>Quantity<input className="input" value={listingForm.quantity} onChange={(event) => setListingField('quantity', event.target.value)} /></label>
+              <label>Quantity unit<input className="input" value={listingForm.quantityUnit} onChange={(event) => setListingField('quantityUnit', event.target.value)} /></label>
+              <label>Price<input className="input" value={listingForm.price} onChange={(event) => setListingField('price', event.target.value)} /></label>
+              <label>Price unit<input className="input" value={listingForm.priceUnit} onChange={(event) => setListingField('priceUnit', event.target.value)} /></label>
+              <label>Target price<input className="input" value={listingForm.targetPrice} onChange={(event) => setListingField('targetPrice', event.target.value)} /></label>
+              <label>Tax status<input className="input" value={listingForm.taxStatus} onChange={(event) => setListingField('taxStatus', event.target.value)} /></label>
+              <label>Stock status<input className="input" value={listingForm.stockStatus} onChange={(event) => setListingField('stockStatus', event.target.value)} /></label>
+              <label>Minimum order quantity<input className="input" value={listingForm.minimumOrderQuantity} onChange={(event) => setListingField('minimumOrderQuantity', event.target.value)} /></label>
+              <label>Certificate available<input className="input" value={listingForm.certificateAvailable} onChange={(event) => setListingField('certificateAvailable', event.target.value)} /></label>
+              <label>Certificate required<input className="input" value={listingForm.certificateRequired} onChange={(event) => setListingField('certificateRequired', event.target.value)} /></label>
+              <label>Photos available<input className="input" value={listingForm.photosAvailable} onChange={(event) => setListingField('photosAvailable', event.target.value)} /></label>
+              <label>Visibility<select value={listingForm.listingVisibility} onChange={(event) => setListingField('listingVisibility', event.target.value)}>
+                <option value="public">Public / admin-created</option>
+                <option value="draft">Draft / private</option>
+              </select></label>
+              <label className="span2">Dispatch location<textarea value={listingForm.dispatchLocation} onChange={(event) => setListingField('dispatchLocation', event.target.value)} /></label>
+              <label className="span2">Delivery location<textarea value={listingForm.deliveryLocation} onChange={(event) => setListingField('deliveryLocation', event.target.value)} /></label>
+              <label>City<input className="input" value={listingForm.city} onChange={(event) => setListingField('city', event.target.value)} /></label>
+              <label>State<input className="input" value={listingForm.state} onChange={(event) => setListingField('state', event.target.value)} /></label>
+              <label>Delivery timeline<input className="input" value={listingForm.deliveryTimeline} onChange={(event) => setListingField('deliveryTimeline', event.target.value)} /></label>
+              <label>Application / use<input className="input" value={listingForm.applicationOrUse} onChange={(event) => setListingField('applicationOrUse', event.target.value)} /></label>
+              <label className="span2">Remarks<textarea value={listingForm.remarks} onChange={(event) => setListingField('remarks', event.target.value)} /></label>
+              <div className="span2 waAccountConfirmBox">
+                <p><b>Review:</b> Confirm product, price, GST, stock, documents, and dispatch location before creating the listing.</p>
+                <button className="btn" type="button" disabled={listingSaving} onClick={createListing}>{listingSaving ? 'Creating listing...' : allowAnotherListing ? 'Create another listing' : 'Create Listing'}</button>
               </div>
             </div>
           )}
