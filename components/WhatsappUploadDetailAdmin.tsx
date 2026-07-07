@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import ListingImagePicker from '@/components/ListingImagePicker';
+import type { ListingImage } from '@/lib/listingImages';
 import { WHATSAPP_STATUS_OPTIONS, WhatsappAccountCreation, WhatsappUploadStatus, WhatsappUploadSubmission } from '@/lib/whatsappUploadTypes';
 
 function Field({ label, value }: { label: string; value: unknown }) {
@@ -79,6 +81,7 @@ type ListingForm = {
   applicationOrUse: string;
   remarks: string;
   listingVisibility: string;
+  productImages: ListingImage[];
 };
 
 function accountTypeForRole(role: string) {
@@ -152,6 +155,7 @@ function initialListingForm(submission: WhatsappUploadSubmission): ListingForm {
     applicationOrUse: submission.applicationOrUse || '',
     remarks: submission.remarks || '',
     listingVisibility: 'public',
+    productImages: [],
   };
 }
 
@@ -201,7 +205,7 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
     });
   }
 
-  function setListingField(key: keyof ListingForm, value: string) {
+  function setListingField(key: keyof ListingForm, value: any) {
     setListingForm((form) => ({ ...form, [key]: value }));
   }
 
@@ -548,6 +552,11 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
               <label>Delivery timeline<input className="input" value={listingForm.deliveryTimeline} onChange={(event) => setListingField('deliveryTimeline', event.target.value)} /></label>
               <label>Application / use<input className="input" value={listingForm.applicationOrUse} onChange={(event) => setListingField('applicationOrUse', event.target.value)} /></label>
               <label className="span2">Remarks<textarea value={listingForm.remarks} onChange={(event) => setListingField('remarks', event.target.value)} /></label>
+              <ListingImagePicker
+                images={listingForm.productImages || []}
+                onChange={(images) => setListingField('productImages', images)}
+                helpText="Optional. Add up to 3 product images from the WhatsApp conversation, hosted URL, or local-dev upload."
+              />
               <div className="span2 waAccountConfirmBox">
                 <p><b>Review:</b> Confirm product, price, GST, stock, documents, and dispatch location before creating the listing.</p>
                 <button className="btn" type="button" disabled={listingSaving} onClick={createListing}>{listingSaving ? 'Creating listing...' : allowAnotherListing ? 'Create another listing' : 'Create Listing'}</button>

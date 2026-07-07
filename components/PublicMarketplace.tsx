@@ -21,7 +21,11 @@ function isSell(t: string) { return t === 'SELL' || t === 'SCRAP'; }
 function heroTitle(role: Role) { return role === 'buyer' ? 'Source verified local metal supply with confidence.' : 'See genuine buyer demand and respond faster.'; }
 function heroText(role: Role) { return role === 'buyer' ? 'Explore supply offers, stock lots, scrap and made-to-order capability. Talmech verifies commercial, logistics and technical information before supplier details are shared.' : 'View live buyer demand by product, grade, quantity and city. Sellers can respond with stock, manufacturing readiness and dispatch timelines.'; }
 function primaryCta(role: Role) { return role === 'buyer' ? 'Post your buying requirement' : 'List your supply offer'; }
-function firstPreview(x: any) { return Array.isArray(x.previewImages) && x.previewImages[0] ? x.previewImages[0] : ''; }
+function listingImageUrlsLocal(x: any) {
+  const images = x.productImages || x.raw?.productImages || [];
+  return Array.isArray(images) ? images.map((image: any) => image?.url).filter(Boolean) : [];
+}
+function firstPreview(x: any) { const images = listingImageUrlsLocal(x); return images[0] || (Array.isArray(x.previewImages) && x.previewImages[0] ? x.previewImages[0] : ''); }
 function categorySlug(x: any) { const match = productCategories.find((m) => m.metal === x.metal || m.slug === String(x.metal || '').toLowerCase()); return match?.slug || 'steel'; }
 function defaultCategoryImage(x: any) { return getProductImage(x.product, categorySlug(x)); }
 function rateSource(x: any) { return x.targetPrice || x.price || x.indicativeRate || ''; }

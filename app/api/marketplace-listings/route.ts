@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { csv } from '@/lib/marketplaceStore';
 import { marketplaceDemoListings } from '@/lib/marketplaceData';
 import { deleteListingById, listListings, updateListing } from '@/lib/proDb';
+import { normalizeListingImages } from '@/lib/listingImages';
 import { sanitizeMultiline, sanitizeString } from '@/lib/validation';
 export const dynamic = 'force-dynamic';
 function publicDemo() {
@@ -55,9 +56,20 @@ export async function PATCH(req: NextRequest) {
     deliveryEta: sanitizeString(patchSource.deliveryEta, 120) || undefined,
     status: sanitizeString(patchSource.status, 80) || undefined,
     lockStatus: sanitizeString(patchSource.lockStatus, 80) || undefined,
+    verified: typeof patchSource.verified === 'boolean' ? patchSource.verified : undefined,
     technicalSummary: sanitizeMultiline(patchSource.technicalSummary, 1200) || undefined,
   };
   const cleanPatch = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined));
+  const productImages = patchSource.productImages !== undefined ? normalizeListingImages(patchSource.productImages, [cleanPatch.metal, cleanPatch.product, cleanPatch.grade].filter(Boolean).join(' ')) : undefined;
+  if (productImages) {
+    (cleanPatch as any).productImages = productImages;
+    (cleanPatch as any).mediaCount = productImages.length;
+    (cleanPatch as any).mediaGallery = productImages.map((image) => image.url);
+    (cleanPatch as any).previewImages = productImages.map((image) => image.url);
+  }
+  if (patchSource.raw && typeof patchSource.raw === 'object' && !Array.isArray(patchSource.raw)) {
+    (cleanPatch as any).raw = patchSource.raw;
+  }
   const listing = await updateListing(id, cleanPatch);
   if (listing) return NextResponse.json({ok:true, listing});
   return NextResponse.json({ok:false, error:'Listing not found'}, {status:404});

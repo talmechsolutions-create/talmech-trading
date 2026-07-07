@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import ListingImagePicker from '@/components/ListingImagePicker';
+import type { ListingImage } from '@/lib/listingImages';
 
 const accountTypes = ['Buyer', 'Seller', 'Trader', 'Supplier', 'Manufacturer'];
 const listingTypes = ['Sell Listing', 'Buy Requirement', 'Scrap Listing', 'Trader Deal'];
@@ -40,6 +42,7 @@ const initialListing = {
   state: '',
   deliveryTimeline: '',
   remarks: '',
+  productImages: [] as ListingImage[],
 };
 
 function Field({ label, value }: { label: string; value: unknown }) {
@@ -57,7 +60,7 @@ export default function ManualListingAdmin() {
     setAccountForm((form) => ({ ...form, [key]: value }));
   }
 
-  function setListing(key: string, value: string) {
+  function setListing(key: string, value: any) {
     setListingForm((form) => ({ ...form, [key]: value }));
   }
 
@@ -193,6 +196,11 @@ export default function ManualListingAdmin() {
               <label>State<input className="input" value={listing.state} onChange={(event) => setListing('state', event.target.value)} /></label>
               <label>Delivery timeline<input className="input" value={listing.deliveryTimeline} onChange={(event) => setListing('deliveryTimeline', event.target.value)} /></label>
               <label className="span2">Remarks<textarea value={listing.remarks} onChange={(event) => setListing('remarks', event.target.value)} /></label>
+              <ListingImagePicker
+                images={listing.productImages || []}
+                onChange={(images) => setListing('productImages', images as any)}
+                helpText="Optional. Product images improve buyer response. Upload works in local dev; production should use a configured storage provider or hosted image URLs."
+              />
             </div>
           </section>
         </div>

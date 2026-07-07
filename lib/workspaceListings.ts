@@ -1,4 +1,5 @@
 import { createListing } from '@/lib/proDb';
+import { normalizeListingImages } from '@/lib/listingImages';
 import { WhatsappUploadSubmission } from '@/lib/whatsappUploadTypes';
 import { normalizeEmail, normalizeIndianMobile, sanitizeMultiline, sanitizeString } from '@/lib/validation';
 
@@ -82,6 +83,7 @@ export function buildWorkspaceListing(input: ListingInput, options: {
   const dispatchReadiness = field(input, 'stockStatus', '', 80).toLowerCase().includes('ready') ? 'READY_STOCK' : 'MAKE_TO_ORDER';
   const approvalStatus = options.approved ? 'approved' : 'Pending Admin Review';
   const visibility = field(input, 'listingVisibility', options.approved ? 'public' : 'draft', 40) || (options.approved ? 'public' : 'draft');
+  const productImages = normalizeListingImages(input.productImages || input, [field(input, 'metal', '', 80), field(input, 'product', '', 140), field(input, 'grade', '', 100)].filter(Boolean).join(' '));
   const technicalSummary = sanitizeMultiline([
     field(input, 'sizeOrSpecification', '', 240),
     field(input, 'productForm', '', 120),
@@ -116,14 +118,16 @@ export function buildWorkspaceListing(input: ListingInput, options: {
     productionLeadTime: dispatchReadiness === 'MAKE_TO_ORDER' ? field(input, 'deliveryTimeline', 'To be confirmed', 120) : '',
     deliveryEta: field(input, 'deliveryTimeline', 'To be confirmed by Talmech', 120),
     technicalSummary,
-    mediaCount: 0,
-    mediaGallery: [],
-    previewImages: [],
+    productImages,
+    mediaCount: productImages.length,
+    mediaGallery: productImages.map((image) => image.url),
+    previewImages: productImages.map((image) => image.url),
     status: options.approved ? 'Open' : 'Pending Admin Review',
     lockStatus: 'Available',
     verified: Boolean(options.approved),
     raw: {
       ...input,
+      productImages,
       listingKind: typeInfo.kind,
       ownerUserId: field(input, 'ownerUserId', owner.id || '', 80),
       accountId: field(input, 'accountId', owner.id || '', 80),

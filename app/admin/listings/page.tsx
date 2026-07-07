@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import AdminListingsConsole from '@/components/AdminListingsConsole';
+import { generateListingStrategy } from '@/lib/listingIntelligence';
 import { listListings } from '@/lib/proDb';
 
 export const metadata: Metadata = {
@@ -11,5 +12,6 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminListingsPage() {
   const listings = await listListings(false);
-  return <AdminListingsConsole initialListings={listings} />;
+  const strategies = Object.fromEntries(listings.map((listing: any) => [listing.id, generateListingStrategy(listing)]));
+  return <AdminListingsConsole initialListings={listings} initialStrategies={strategies} />;
 }

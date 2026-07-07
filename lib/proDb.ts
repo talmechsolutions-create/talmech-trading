@@ -85,6 +85,37 @@ const userRegistrationColumns = new Set([
   'documents',
 ]);
 
+const marketplaceListingColumns = new Set([
+  'leadId',
+  'type',
+  'metal',
+  'product',
+  'grade',
+  'quantity',
+  'unit',
+  'targetPrice',
+  'priceType',
+  'state',
+  'city',
+  'area',
+  'pincode',
+  'pickupAddress',
+  'pickupLat',
+  'pickupLng',
+  'pickupMapUrl',
+  'dispatchReadiness',
+  'readyDispatchTime',
+  'productionLeadTime',
+  'deliveryEta',
+  'technicalSummary',
+  'mediaCount',
+  'mediaGallery',
+  'previewImages',
+  'status',
+  'lockStatus',
+  'verified',
+]);
+
 export async function listLeads() {
   return withDb(
     async () => (await prisma.publicLead.findMany({ orderBy: { createdAt: 'desc' } })).map(fromDbDates),
@@ -193,7 +224,11 @@ export async function updateListing(id: string, patch: any) {
   return withDb(async () => {
     const existing = await prisma.marketplaceListing.findUnique({ where: { id } });
     if (!existing) return null;
-    const row = await prisma.marketplaceListing.update({ where: { id }, data: clean({ ...patch, updatedAt: new Date(), raw: { ...objectOrEmpty((existing as any).raw), ...(patch.raw || patch) } }) });
+    const data: Record<string, any> = {};
+    Object.entries(patch || {}).forEach(([key, value]) => {
+      if (marketplaceListingColumns.has(key)) data[key] = value;
+    });
+    const row = await prisma.marketplaceListing.update({ where: { id }, data: clean({ ...data, updatedAt: new Date(), raw: { ...objectOrEmpty((existing as any).raw), ...(patch.raw || patch) } }) });
     return fromDbDates(row);
   }, async () => {
     const rows = await readJsonArray(listingsFile); const idx = rows.findIndex((r:any)=>r.id===id); if (idx < 0) return null; rows[idx] = {...rows[idx], ...patch, updatedAt: new Date().toISOString()}; await writeJsonArray(listingsFile, rows); return rows[idx];

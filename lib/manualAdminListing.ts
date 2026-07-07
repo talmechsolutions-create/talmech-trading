@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import { hashAdminAssistedPassword } from '@/lib/adminAssistedAccounts';
 import { createUserRegistration, listUsers, updateUserRegistrationRecord } from '@/lib/proDb';
+import { normalizeListingImages } from '@/lib/listingImages';
 import { createWorkspaceListing } from '@/lib/workspaceListings';
 import {
   isValidEmail,
@@ -84,6 +85,7 @@ function cleanListing(input: ManualListingInput) {
     state: sanitizeString(input.state, 80),
     deliveryTimeline: sanitizeString(input.deliveryTimeline, 120),
     remarks: sanitizeMultiline(input.remarks, 1200),
+    productImages: normalizeListingImages(input.productImages || input, [input.metal, input.product, input.grade].filter(Boolean).join(' ')),
   };
 }
 

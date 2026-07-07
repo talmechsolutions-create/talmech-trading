@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import ListingImagePicker from '@/components/ListingImagePicker';
+import type { ListingImage } from '@/lib/listingImages';
 
 type View = 'dashboard' | 'profile' | 'listings' | 'new-listing' | 'requirements' | 'new-requirement' | 'orders' | 'performance' | 'help';
 
@@ -37,6 +39,7 @@ const blankListing = {
   state: '',
   deliveryTimeline: '',
   remarks: '',
+  productImages: [] as ListingImage[],
 };
 
 const blankRequirement = {
@@ -60,6 +63,11 @@ function formatDate(value: string) {
 
 function raw(row: any) {
   return row?.raw && typeof row.raw === 'object' ? row.raw : {};
+}
+
+function listingImages(row: any): ListingImage[] {
+  const source = row?.productImages || raw(row).productImages || [];
+  return Array.isArray(source) ? source.slice(0, 3) : [];
 }
 
 function loadLocalUser() {
@@ -133,7 +141,7 @@ export default function AccountWorkspace({ view }: { view: View }) {
     setProfileForm((form: any) => ({ ...form, [key]: value }));
   }
 
-  function setListing(key: string, value: string) {
+  function setListing(key: string, value: any) {
     setListingForm((form: any) => ({ ...form, [key]: value }));
   }
 
@@ -321,7 +329,8 @@ export default function AccountWorkspace({ view }: { view: View }) {
           {view === 'listings' && (
             <section className="panel">
               <div className="sectionHead"><div><h2>My listings</h2><p className="muted">Client-created listings stay pending until Talmech reviews them.</p></div><Link className="btn" href="/account/listings/new">New listing</Link></div>
-              <div className="accountTableWrap"><table><thead><tr><th>ID</th><th>Type</th><th>Product</th><th>Quantity</th><th>Status</th><th>Created</th></tr></thead><tbody>{listings.map((listing) => <tr key={listing.id}><td>{listing.id}</td><td>{raw(listing).listingKind || listing.type}</td><td>{listing.metal} / {listing.product} / {listing.grade || '-'}</td><td>{listing.quantity} {listing.unit}</td><td><span className="pill">{listing.status}</span></td><td>{formatDate(listing.createdAt)}</td></tr>)}{!listings.length && <tr><td colSpan={6}>No listings yet.</td></tr>}</tbody></table></div>
+              <p className="notice slimNotice">Listings with clear product photos get better buyer response. Talmech admin still reviews and approves listing status.</p>
+              <div className="accountTableWrap"><table><thead><tr><th>ID</th><th>Images</th><th>Type</th><th>Product</th><th>Quantity</th><th>Status</th><th>Created</th></tr></thead><tbody>{listings.map((listing) => <tr key={listing.id}><td>{listing.id}</td><td><div className="listingMiniImages">{listingImages(listing).map((image) => <img key={image.imageId || image.url} src={image.url} alt={image.alt || listing.product} />)}{!listingImages(listing).length && <span className="pill gold">Needs photos</span>}</div></td><td>{raw(listing).listingKind || listing.type}</td><td>{listing.metal} / {listing.product} / {listing.grade || '-'}</td><td>{listing.quantity} {listing.unit}</td><td><span className="pill">{listing.status || raw(listing).listingApprovalStatus || 'Pending admin review'}</span></td><td>{formatDate(listing.createdAt)}</td></tr>)}{!listings.length && <tr><td colSpan={7}>No listings yet.</td></tr>}</tbody></table></div>
             </section>
           )}
 
@@ -392,7 +401,7 @@ function Kpi({ label, value }: { label: string; value: number }) {
   return <div className="card"><h2>{value}</h2><p className="muted">{label}</p></div>;
 }
 
-function ListingForm({ form, set, onSubmit }: { form: any; set: (key: string, value: string) => void; onSubmit: () => void }) {
+function ListingForm({ form, set, onSubmit }: { form: any; set: (key: string, value: any) => void; onSubmit: () => void }) {
   return (
     <div className="formGrid">
       <label>Listing type<select value={form.listingType} onChange={(event) => set('listingType', event.target.value)}><option>Sell listing</option><option>Buy requirement</option><option>Scrap listing</option><option>Trader deal listing</option></select></label>
@@ -415,6 +424,11 @@ function ListingForm({ form, set, onSubmit }: { form: any; set: (key: string, va
       <label>State<input className="input" value={form.state} onChange={(event) => set('state', event.target.value)} /></label>
       <label>Delivery timeline<input className="input" value={form.deliveryTimeline} onChange={(event) => set('deliveryTimeline', event.target.value)} /></label>
       <label className="span2">Remarks / images and documents note<textarea value={form.remarks} onChange={(event) => set('remarks', event.target.value)} /></label>
+      <ListingImagePicker
+        images={form.productImages || []}
+        onChange={(images) => set('productImages', images as any)}
+        helpText="Optional. Add up to 3 product images. Clear photos help Talmech verify faster and improve buyer response."
+      />
       <button className="btn span2" type="button" onClick={onSubmit}>Submit for admin review</button>
     </div>
   );
