@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   if (process.env.NODE_ENV === 'production' && provider !== 'local-dev') {
     return NextResponse.json({
       ok: false,
-      error: 'Persistent image upload provider is not configured. Paste a hosted jpg, jpeg, png or webp URL for now.',
+      error: 'Production image upload provider is not configured. Paste hosted image URL or configure Cloudinary/Vercel Blob/Supabase/R2.',
     }, { status: 409 });
   }
 

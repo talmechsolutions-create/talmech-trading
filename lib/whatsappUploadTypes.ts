@@ -34,9 +34,9 @@ export const WHATSAPP_STATUS_OPTIONS = [
 ] as const;
 
 export const WHATSAPP_QUANTITY_UNITS = ['kg', 'ton', 'piece', 'meter', 'bundle', 'lot'] as const;
-export const WHATSAPP_PRICE_UNITS = ['per kg', 'per ton', 'per piece', 'total lot', 'negotiable'] as const;
+export const WHATSAPP_PRICE_UNITS = ['per kg', 'per ton', 'per piece', 'total lot', 'negotiable', 'price on request'] as const;
 export const WHATSAPP_TAX_STATUS_OPTIONS = ['GST extra', 'GST included', 'not sure'] as const;
-export const WHATSAPP_STOCK_STATUS_OPTIONS = ['ready stock', 'make to order', 'limited stock'] as const;
+export const WHATSAPP_STOCK_STATUS_OPTIONS = ['Ready stock', 'Available on confirmation', 'Made to order', 'Not sure'] as const;
 export const WHATSAPP_CERTIFICATE_OPTIONS = ['MTC', 'test certificate', 'invoice', 'none', 'not sure'] as const;
 export const WHATSAPP_PHOTOS_AVAILABLE_OPTIONS = ['yes', 'no'] as const;
 

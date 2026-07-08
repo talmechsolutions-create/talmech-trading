@@ -62,7 +62,7 @@ const emptyForm: FormState = {
   priceUnit: 'per kg',
   targetPrice: '',
   taxStatus: 'not sure',
-  stockStatus: 'ready stock',
+  stockStatus: 'Ready stock',
   minimumOrderQuantity: '',
   deliveryTimeline: '',
   certificateAvailable: 'not sure',

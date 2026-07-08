@@ -19,7 +19,11 @@ function ownerLabel(row: any) {
 
 function listingImages(row: any) {
   const images = row.productImages || raw(row).productImages || row.previewImages || [];
-  return Array.isArray(images) ? images.slice(0, 3) : [];
+  if (!Array.isArray(images)) return [];
+  return images.slice(0, 3).map((image, index) => {
+    if (typeof image === 'string') return { imageId: `${row.id || 'listing'}-${index}`, url: image, alt: row.product || `Listing image ${index + 1}` };
+    return image;
+  });
 }
 
 export default function AdminListingsConsole({ initialListings, initialStrategies = {} }: { initialListings: any[]; initialStrategies?: Record<string, any> }) {

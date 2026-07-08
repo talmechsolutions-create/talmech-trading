@@ -3,7 +3,15 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import ListingImagePicker from '@/components/ListingImagePicker';
+import MetalProductSelector from '@/components/MetalProductSelector';
 import type { ListingImage } from '@/lib/listingImages';
+import {
+  WHATSAPP_CERTIFICATE_OPTIONS,
+  WHATSAPP_PRICE_UNITS,
+  WHATSAPP_QUANTITY_UNITS,
+  WHATSAPP_STOCK_STATUS_OPTIONS,
+  WHATSAPP_TAX_STATUS_OPTIONS,
+} from '@/lib/whatsappUploadTypes';
 
 type View = 'dashboard' | 'profile' | 'listings' | 'new-listing' | 'requirements' | 'new-requirement' | 'orders' | 'performance' | 'help';
 
@@ -25,12 +33,12 @@ const blankListing = {
   productForm: '',
   sizeOrSpecification: '',
   quantity: '',
-  quantityUnit: 'KG',
+  quantityUnit: 'kg',
   price: '',
-  priceUnit: 'per kg',
+  priceUnit: 'price on request',
   targetPrice: '',
   taxStatus: 'not sure',
-  stockStatus: 'ready stock',
+  stockStatus: 'Ready stock',
   certificateAvailable: '',
   certificateRequired: '',
   dispatchLocation: '',
@@ -46,8 +54,9 @@ const blankRequirement = {
   metal: '',
   product: '',
   grade: '',
+  productForm: '',
   quantity: '',
-  unit: 'KG',
+  unit: 'kg',
   targetPrice: '',
   city: '',
   state: '',
@@ -78,8 +87,13 @@ function loadLocalUser() {
   }
 }
 
-function Field({ label, value }: { label: string; value: unknown }) {
-  return <p><b>{label}:</b> {String(value || '-')}</p>;
+function FieldLabel({ label, status }: { label: string; status: 'Required' | 'Optional' | 'Recommended' }) {
+  return (
+    <span className="fieldLabel">
+      {label}
+      <span className={`fieldBadge ${status.toLowerCase()}`}>{status}</span>
+    </span>
+  );
 }
 
 export default function AccountWorkspace({ view }: { view: View }) {
@@ -145,7 +159,7 @@ export default function AccountWorkspace({ view }: { view: View }) {
     setListingForm((form: any) => ({ ...form, [key]: value }));
   }
 
-  function setRequirement(key: string, value: string) {
+  function setRequirement(key: string, value: any) {
     setRequirementForm((form: any) => ({ ...form, [key]: value }));
   }
 
@@ -402,28 +416,29 @@ function Kpi({ label, value }: { label: string; value: number }) {
 }
 
 function ListingForm({ form, set, onSubmit }: { form: any; set: (key: string, value: any) => void; onSubmit: () => void }) {
+  function mergeProduct(next: Record<string, any>) {
+    Object.entries(next).forEach(([key, value]) => set(key, value));
+  }
+
   return (
     <div className="formGrid">
-      <label>Listing type<select value={form.listingType} onChange={(event) => set('listingType', event.target.value)}><option>Sell listing</option><option>Buy requirement</option><option>Scrap listing</option><option>Trader deal listing</option></select></label>
-      <label>Metal<input className="input" value={form.metal} onChange={(event) => set('metal', event.target.value)} /></label>
-      <label>Product<input className="input" value={form.product} onChange={(event) => set('product', event.target.value)} /></label>
-      <label>Grade<input className="input" value={form.grade} onChange={(event) => set('grade', event.target.value)} /></label>
-      <label>Product form<input className="input" value={form.productForm} onChange={(event) => set('productForm', event.target.value)} /></label>
-      <label>Size / spec<input className="input" value={form.sizeOrSpecification} onChange={(event) => set('sizeOrSpecification', event.target.value)} /></label>
-      <label>Quantity<input className="input" value={form.quantity} onChange={(event) => set('quantity', event.target.value)} /></label>
-      <label>Unit<input className="input" value={form.quantityUnit} onChange={(event) => set('quantityUnit', event.target.value)} /></label>
-      <label>Price<input className="input" value={form.price} onChange={(event) => set('price', event.target.value)} /></label>
-      <label>Price unit<input className="input" value={form.priceUnit} onChange={(event) => set('priceUnit', event.target.value)} /></label>
-      <label>Target price<input className="input" value={form.targetPrice} onChange={(event) => set('targetPrice', event.target.value)} /></label>
-      <label>GST<select value={form.taxStatus} onChange={(event) => set('taxStatus', event.target.value)}><option>not sure</option><option>GST extra</option><option>GST included</option></select></label>
-      <label>Stock status<input className="input" value={form.stockStatus} onChange={(event) => set('stockStatus', event.target.value)} /></label>
-      <label>Certificate available<input className="input" value={form.certificateAvailable} onChange={(event) => set('certificateAvailable', event.target.value)} /></label>
-      <label className="span2">Dispatch location<textarea value={form.dispatchLocation} onChange={(event) => set('dispatchLocation', event.target.value)} /></label>
-      <label className="span2">Delivery location<textarea value={form.deliveryLocation} onChange={(event) => set('deliveryLocation', event.target.value)} /></label>
-      <label>City<input className="input" value={form.city} onChange={(event) => set('city', event.target.value)} /></label>
-      <label>State<input className="input" value={form.state} onChange={(event) => set('state', event.target.value)} /></label>
-      <label>Delivery timeline<input className="input" value={form.deliveryTimeline} onChange={(event) => set('deliveryTimeline', event.target.value)} /></label>
-      <label className="span2">Remarks / images and documents note<textarea value={form.remarks} onChange={(event) => set('remarks', event.target.value)} /></label>
+      <label><FieldLabel label="Listing type" status="Required" /><select value={form.listingType} onChange={(event) => set('listingType', event.target.value)}><option>Sell listing</option><option>Buy requirement</option><option>Scrap listing</option><option>Trader deal listing</option></select></label>
+      <div className="span2"><MetalProductSelector value={form} onChange={mergeProduct} requiredLevel="metal-product" mode="client" /></div>
+      <label><FieldLabel label="Size / spec" status="Optional" /><input className="input" value={form.sizeOrSpecification} onChange={(event) => set('sizeOrSpecification', event.target.value)} /></label>
+      <label><FieldLabel label="Quantity" status="Recommended" /><input className="input" value={form.quantity} onChange={(event) => set('quantity', event.target.value)} /></label>
+      <label><FieldLabel label="Quantity unit" status="Recommended" /><select value={form.quantityUnit} onChange={(event) => set('quantityUnit', event.target.value)}>{WHATSAPP_QUANTITY_UNITS.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+      <label><FieldLabel label="Price" status="Optional" /><input className="input" value={form.price} onChange={(event) => set('price', event.target.value)} /></label>
+      <label><FieldLabel label="Price unit" status="Optional" /><select value={form.priceUnit} onChange={(event) => set('priceUnit', event.target.value)}>{WHATSAPP_PRICE_UNITS.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+      <label><FieldLabel label="Target price" status="Optional" /><input className="input" value={form.targetPrice} onChange={(event) => set('targetPrice', event.target.value)} /></label>
+      <label><FieldLabel label="GST" status="Optional" /><select value={form.taxStatus} onChange={(event) => set('taxStatus', event.target.value)}>{WHATSAPP_TAX_STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+      <label><FieldLabel label="Stock status" status="Optional" /><select value={form.stockStatus} onChange={(event) => set('stockStatus', event.target.value)}>{WHATSAPP_STOCK_STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+      <label><FieldLabel label="Certificate available" status="Optional" /><select value={form.certificateAvailable} onChange={(event) => set('certificateAvailable', event.target.value)}><option value="">Optional</option>{WHATSAPP_CERTIFICATE_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+      <label className="span2"><FieldLabel label="Dispatch location" status="Optional" /><textarea value={form.dispatchLocation} onChange={(event) => set('dispatchLocation', event.target.value)} /></label>
+      <label className="span2"><FieldLabel label="Delivery location" status="Optional" /><textarea value={form.deliveryLocation} onChange={(event) => set('deliveryLocation', event.target.value)} /></label>
+      <label><FieldLabel label="City" status="Recommended" /><input className="input" value={form.city} onChange={(event) => set('city', event.target.value)} /></label>
+      <label><FieldLabel label="State" status="Recommended" /><input className="input" value={form.state} onChange={(event) => set('state', event.target.value)} /></label>
+      <label><FieldLabel label="Delivery timeline" status="Optional" /><input className="input" value={form.deliveryTimeline} onChange={(event) => set('deliveryTimeline', event.target.value)} /></label>
+      <label className="span2"><FieldLabel label="Remarks / images and documents note" status="Optional" /><textarea value={form.remarks} onChange={(event) => set('remarks', event.target.value)} /></label>
       <ListingImagePicker
         images={form.productImages || []}
         onChange={(images) => set('productImages', images as any)}
@@ -434,20 +449,22 @@ function ListingForm({ form, set, onSubmit }: { form: any; set: (key: string, va
   );
 }
 
-function RequirementForm({ form, set, onSubmit }: { form: any; set: (key: string, value: string) => void; onSubmit: () => void }) {
+function RequirementForm({ form, set, onSubmit }: { form: any; set: (key: string, value: any) => void; onSubmit: () => void }) {
+  function mergeProduct(next: Record<string, any>) {
+    Object.entries(next).forEach(([key, value]) => set(key, value));
+  }
+
   return (
     <div className="formGrid">
-      <label>Metal<input className="input" value={form.metal} onChange={(event) => set('metal', event.target.value)} /></label>
-      <label>Product<input className="input" value={form.product} onChange={(event) => set('product', event.target.value)} /></label>
-      <label>Grade<input className="input" value={form.grade} onChange={(event) => set('grade', event.target.value)} /></label>
-      <label>Quantity<input className="input" value={form.quantity} onChange={(event) => set('quantity', event.target.value)} /></label>
-      <label>Unit<input className="input" value={form.unit} onChange={(event) => set('unit', event.target.value)} /></label>
-      <label>Target price<input className="input" value={form.targetPrice} onChange={(event) => set('targetPrice', event.target.value)} /></label>
-      <label>City<input className="input" value={form.city} onChange={(event) => set('city', event.target.value)} /></label>
-      <label>State<input className="input" value={form.state} onChange={(event) => set('state', event.target.value)} /></label>
-      <label className="span2">Delivery location<textarea value={form.deliveryLocation} onChange={(event) => set('deliveryLocation', event.target.value)} /></label>
-      <label>Delivery timeline<input className="input" value={form.deliveryTimeline} onChange={(event) => set('deliveryTimeline', event.target.value)} /></label>
-      <label className="span2">Technical details / remarks<textarea value={form.remarks} onChange={(event) => set('remarks', event.target.value)} /></label>
+      <div className="span2"><MetalProductSelector value={form} onChange={mergeProduct} requiredLevel="metal-product" mode="client" /></div>
+      <label><FieldLabel label="Quantity" status="Required" /><input className="input" value={form.quantity} onChange={(event) => set('quantity', event.target.value)} /></label>
+      <label><FieldLabel label="Unit" status="Required" /><select value={form.unit} onChange={(event) => set('unit', event.target.value)}>{WHATSAPP_QUANTITY_UNITS.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+      <label><FieldLabel label="Target price" status="Optional" /><input className="input" value={form.targetPrice} onChange={(event) => set('targetPrice', event.target.value)} /></label>
+      <label><FieldLabel label="City" status="Recommended" /><input className="input" value={form.city} onChange={(event) => set('city', event.target.value)} /></label>
+      <label><FieldLabel label="State" status="Recommended" /><input className="input" value={form.state} onChange={(event) => set('state', event.target.value)} /></label>
+      <label className="span2"><FieldLabel label="Delivery location" status="Optional" /><textarea value={form.deliveryLocation} onChange={(event) => set('deliveryLocation', event.target.value)} /></label>
+      <label><FieldLabel label="Delivery timeline" status="Optional" /><input className="input" value={form.deliveryTimeline} onChange={(event) => set('deliveryTimeline', event.target.value)} /></label>
+      <label className="span2"><FieldLabel label="Technical details / remarks" status="Optional" /><textarea value={form.remarks} onChange={(event) => set('remarks', event.target.value)} /></label>
       <button className="btn span2" type="button" onClick={onSubmit}>Post requirement</button>
     </div>
   );

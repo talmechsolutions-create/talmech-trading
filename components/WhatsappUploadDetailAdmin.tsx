@@ -3,8 +3,19 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import ListingImagePicker from '@/components/ListingImagePicker';
+import MetalProductSelector from '@/components/MetalProductSelector';
 import type { ListingImage } from '@/lib/listingImages';
-import { WHATSAPP_STATUS_OPTIONS, WhatsappAccountCreation, WhatsappUploadStatus, WhatsappUploadSubmission } from '@/lib/whatsappUploadTypes';
+import {
+  WHATSAPP_CERTIFICATE_OPTIONS,
+  WHATSAPP_PRICE_UNITS,
+  WHATSAPP_QUANTITY_UNITS,
+  WHATSAPP_STATUS_OPTIONS,
+  WHATSAPP_STOCK_STATUS_OPTIONS,
+  WHATSAPP_TAX_STATUS_OPTIONS,
+  WhatsappAccountCreation,
+  WhatsappUploadStatus,
+  WhatsappUploadSubmission,
+} from '@/lib/whatsappUploadTypes';
 
 function Field({ label, value }: { label: string; value: unknown }) {
   return (
@@ -18,6 +29,12 @@ function Field({ label, value }: { label: string; value: unknown }) {
 function formatDate(value: string) {
   if (!value) return '-';
   return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function optionOrFallback(value: string, options: readonly string[], fallback = '') {
+  const normalized = String(value || '').trim();
+  if (!normalized) return fallback;
+  return options.find((option) => option.toLowerCase() === normalized.toLowerCase()) || normalized;
 }
 
 const accountTypeOptions = [
@@ -137,12 +154,12 @@ function initialListingForm(submission: WhatsappUploadSubmission): ListingForm {
     productForm: submission.finalProductFormLabel || submission.selectedProductForm || submission.customProductForm || '',
     sizeOrSpecification: submission.sizeOrSpecification || '',
     quantity: submission.quantity || '',
-    quantityUnit: submission.quantityUnit || 'KG',
+    quantityUnit: optionOrFallback(submission.quantityUnit || '', WHATSAPP_QUANTITY_UNITS, 'kg'),
     price: submission.price || '',
-    priceUnit: submission.priceUnit || '',
+    priceUnit: optionOrFallback(submission.priceUnit || '', WHATSAPP_PRICE_UNITS, 'price on request'),
     targetPrice: submission.targetPrice || '',
-    taxStatus: submission.taxStatus || '',
-    stockStatus: submission.stockStatus || '',
+    taxStatus: optionOrFallback(submission.taxStatus || '', WHATSAPP_TAX_STATUS_OPTIONS, 'not sure'),
+    stockStatus: optionOrFallback(submission.stockStatus || '', WHATSAPP_STOCK_STATUS_OPTIONS, 'Ready stock'),
     minimumOrderQuantity: submission.minimumOrderQuantity || '',
     certificateAvailable: submission.certificateAvailable || '',
     certificateRequired: submission.certificateRequired || '',
@@ -207,6 +224,10 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
 
   function setListingField(key: keyof ListingForm, value: any) {
     setListingForm((form) => ({ ...form, [key]: value }));
+  }
+
+  function mergeListingProduct(patch: Record<string, any>) {
+    setListingForm((form) => ({ ...form, ...patch }));
   }
 
   async function createAccount() {
@@ -525,21 +546,20 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
               <label>Email<input className="input" value={listingForm.email} onChange={(event) => setListingField('email', event.target.value)} /></label>
               <label>Role<input className="input" value={listingForm.role} onChange={(event) => setListingField('role', event.target.value)} /></label>
               <label>Submission type<input className="input" value={listingForm.submissionType} onChange={(event) => setListingField('submissionType', event.target.value)} /></label>
-              <label>Metal<input className="input" value={listingForm.metal} onChange={(event) => setListingField('metal', event.target.value)} /></label>
-              <label>Product<input className="input" value={listingForm.product} onChange={(event) => setListingField('product', event.target.value)} /></label>
-              <label>Grade<input className="input" value={listingForm.grade} onChange={(event) => setListingField('grade', event.target.value)} /></label>
-              <label>Product form<input className="input" value={listingForm.productForm} onChange={(event) => setListingField('productForm', event.target.value)} /></label>
+              <div className="span2">
+                <MetalProductSelector value={listingForm} onChange={mergeListingProduct} requiredLevel="metal-product" mode="admin" />
+              </div>
               <label className="span2">Size / specification<input className="input" value={listingForm.sizeOrSpecification} onChange={(event) => setListingField('sizeOrSpecification', event.target.value)} /></label>
               <label>Quantity<input className="input" value={listingForm.quantity} onChange={(event) => setListingField('quantity', event.target.value)} /></label>
-              <label>Quantity unit<input className="input" value={listingForm.quantityUnit} onChange={(event) => setListingField('quantityUnit', event.target.value)} /></label>
+              <label>Quantity unit<select value={listingForm.quantityUnit} onChange={(event) => setListingField('quantityUnit', event.target.value)}>{WHATSAPP_QUANTITY_UNITS.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
               <label>Price<input className="input" value={listingForm.price} onChange={(event) => setListingField('price', event.target.value)} /></label>
-              <label>Price unit<input className="input" value={listingForm.priceUnit} onChange={(event) => setListingField('priceUnit', event.target.value)} /></label>
+              <label>Price unit<select value={listingForm.priceUnit} onChange={(event) => setListingField('priceUnit', event.target.value)}>{WHATSAPP_PRICE_UNITS.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
               <label>Target price<input className="input" value={listingForm.targetPrice} onChange={(event) => setListingField('targetPrice', event.target.value)} /></label>
-              <label>Tax status<input className="input" value={listingForm.taxStatus} onChange={(event) => setListingField('taxStatus', event.target.value)} /></label>
-              <label>Stock status<input className="input" value={listingForm.stockStatus} onChange={(event) => setListingField('stockStatus', event.target.value)} /></label>
+              <label>Tax status<select value={listingForm.taxStatus} onChange={(event) => setListingField('taxStatus', event.target.value)}>{WHATSAPP_TAX_STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+              <label>Stock status<select value={listingForm.stockStatus} onChange={(event) => setListingField('stockStatus', event.target.value)}>{WHATSAPP_STOCK_STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
               <label>Minimum order quantity<input className="input" value={listingForm.minimumOrderQuantity} onChange={(event) => setListingField('minimumOrderQuantity', event.target.value)} /></label>
-              <label>Certificate available<input className="input" value={listingForm.certificateAvailable} onChange={(event) => setListingField('certificateAvailable', event.target.value)} /></label>
-              <label>Certificate required<input className="input" value={listingForm.certificateRequired} onChange={(event) => setListingField('certificateRequired', event.target.value)} /></label>
+              <label>Certificate available<select value={listingForm.certificateAvailable} onChange={(event) => setListingField('certificateAvailable', event.target.value)}><option value="">Optional</option>{WHATSAPP_CERTIFICATE_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+              <label>Certificate required<select value={listingForm.certificateRequired} onChange={(event) => setListingField('certificateRequired', event.target.value)}><option value="">Optional</option>{WHATSAPP_CERTIFICATE_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
               <label>Photos available<input className="input" value={listingForm.photosAvailable} onChange={(event) => setListingField('photosAvailable', event.target.value)} /></label>
               <label>Visibility<select value={listingForm.listingVisibility} onChange={(event) => setListingField('listingVisibility', event.target.value)}>
                 <option value="public">Public / admin-created</option>

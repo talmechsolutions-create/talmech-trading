@@ -16,6 +16,8 @@ import {
 
 type ManualAccountInput = Record<string, any>;
 type ManualListingInput = Record<string, any>;
+type CleanAccount = ReturnType<typeof cleanAccount>;
+type CleanListing = ReturnType<typeof cleanListing>;
 
 function appBaseUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
@@ -89,19 +91,56 @@ function cleanListing(input: ManualListingInput) {
   };
 }
 
-function validate(account: ReturnType<typeof cleanAccount>, listing: ReturnType<typeof cleanListing>) {
-  if (!account.accountType) return 'Select an account type.';
-  if (!account.fullName) return 'Enter the client full name.';
-  if (!account.firmName) return 'Enter the firm name.';
-  if (!isValidEmail(account.email)) return 'Enter a valid client email address.';
-  if (!isValidIndianMobile(account.mobile)) return 'Enter a valid client mobile number.';
-  if (account.alternateMobile && !isValidIndianMobile(account.alternateMobile)) return 'Enter a valid alternate mobile number or leave it blank.';
-  if (account.gstNumber && !isValidGst(account.gstNumber)) return 'Enter a valid GST number or leave it blank.';
-  if (!listing.listingType) return 'Select a listing type.';
-  if (!listing.metal) return 'Enter the metal.';
-  if (!listing.product) return 'Enter the product.';
-  if (!listing.quantity) return 'Enter the quantity.';
-  return '';
+function validationError(field: string, message: string) {
+  return { ok: false, status: 400, code: 'VALIDATION_ERROR', message, field, error: message };
+}
+
+function quantityExplainedElsewhere(listing: CleanListing) {
+  const note = `${listing.stockStatus} ${listing.remarks}`.toLowerCase();
+  return /not sure|confirmation|made to order|to be confirmed|not confirmed|pending|after verification|will confirm|tbc/.test(note);
+}
+
+function withListingDefaults(account: CleanAccount, listing: CleanListing): CleanListing {
+  const city = listing.city || account.city;
+  const state = listing.state || account.state;
+  const locationLabel = [city, state].filter(Boolean).join(', ');
+  return {
+    ...listing,
+    city,
+    state,
+    dispatchLocation: listing.dispatchLocation || locationLabel,
+    deliveryLocation: listing.deliveryLocation || locationLabel,
+  };
+}
+
+function validate(account: CleanAccount, listing: CleanListing) {
+  if (!account.accountType) return validationError('account.accountType', 'Select an account type.');
+  if (!account.fullName && !account.firmName) {
+    return validationError('account.firmName', 'Enter either firm name or contact person.');
+  }
+  if (!account.email && !account.mobile) {
+    return validationError('account.email', 'Enter either client email or mobile number.');
+  }
+  if (account.email && !isValidEmail(account.email)) {
+    return validationError('account.email', 'Enter a valid client email address or leave it blank.');
+  }
+  if (account.mobile && !isValidIndianMobile(account.mobile)) {
+    return validationError('account.mobile', 'Enter a valid client mobile number or leave it blank.');
+  }
+  if (account.alternateMobile && !isValidIndianMobile(account.alternateMobile)) {
+    return validationError('account.alternateMobile', 'Enter a valid alternate mobile number or leave it blank.');
+  }
+  if (account.gstNumber && !isValidGst(account.gstNumber)) {
+    return validationError('account.gstNumber', 'Enter a valid GST number or leave it blank.');
+  }
+  if (!listing.listingType) return validationError('listing.listingType', 'Select a listing type.');
+  if (!listing.metal) return validationError('listing.metal', 'Select the metal.');
+  if (!listing.product) return validationError('listing.product', 'Select the product.');
+  if (!listing.quantity && !quantityExplainedElsewhere(listing)) {
+    return validationError('listing.quantity', 'Enter quantity, or use stock status/remarks to explain that quantity is not confirmed.');
+  }
+  if (!listing.quantityUnit) return validationError('listing.quantityUnit', 'Select a quantity unit.');
+  return null;
 }
 
 async function findExistingAccount(email: string, mobile: string) {
@@ -217,9 +256,9 @@ function safeAccount(user: any) {
 
 export async function createManualAdminClientListing(input: { account?: ManualAccountInput; listing?: ManualListingInput }) {
   const account = cleanAccount(input.account || {});
-  const listingInput = cleanListing(input.listing || {});
-  const validationError = validate(account, listingInput);
-  if (validationError) return { ok: false, status: 400, error: validationError };
+  const listingInput = withListingDefaults(account, cleanListing(input.listing || {}));
+  const validationResult = validate(account, listingInput);
+  if (validationResult) return validationResult;
 
   const existing = await findExistingAccount(account.email, account.mobile);
   const now = new Date().toISOString();
@@ -312,7 +351,9 @@ export async function createManualAdminClientListing(input: { account?: ManualAc
   });
 
   if (createdAccount && tempPassword) {
-    emailResult = await sendManualEmail(user, listing, tempPassword);
+    emailResult = user.email
+      ? await sendManualEmail(user, listing, tempPassword)
+      : { status: 'manual_copy_required', provider: 'no_email' };
     await updateUserRegistrationRecord(user.id, {
       credentialsSentAt: now,
       emailDeliveryStatus: emailResult.status,

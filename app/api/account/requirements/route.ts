@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     metal: sanitizeString(body.metal, 80),
     product: sanitizeString(body.product, 140),
     grade: sanitizeString(body.grade, 100),
+    productForm: sanitizeString(body.productForm, 120),
     quantity: sanitizeString(body.quantity, 80),
     unit: sanitizeString(body.unit || body.quantityUnit || 'KG', 40),
     targetPrice: sanitizeString(body.targetPrice, 120),
@@ -56,7 +57,10 @@ export async function POST(req: NextRequest) {
     readyDispatchTime: sanitizeString(body.readyDispatchTime, 80),
     productionLeadTime: sanitizeString(body.productionLeadTime, 80),
     deliveryEta: sanitizeString(body.deliveryTimeline || body.deliveryEta, 120),
-    technicalDetails: sanitizeMultiline(body.technicalDetails || body.remarks, 1600),
+    technicalDetails: sanitizeMultiline([
+      sanitizeString(body.productForm, 120) ? `Product form: ${sanitizeString(body.productForm, 120)}` : '',
+      body.technicalDetails || body.remarks,
+    ].filter(Boolean).join('\n'), 1600),
     mediaLinks: [],
     mediaGallery: [],
     createMarketplaceListing: false,
@@ -70,6 +74,7 @@ export async function POST(req: NextRequest) {
       ownerEmail: user.email,
       ownerMobile: user.primaryMobile,
       source: 'client-workspace',
+      productForm: sanitizeString(body.productForm, 120),
     },
   };
   const requirement = await createLead(lead);

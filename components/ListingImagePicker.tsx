@@ -63,7 +63,7 @@ export default function ListingImagePicker({ images, onChange, label = 'Product 
       .then((response) => response.json())
       .catch(() => ({ ok: false, error: 'Unable to upload image.' }));
     if (!res.ok) {
-      setMessage(res.error || 'Unable to upload image. Paste a hosted image URL instead.');
+      setMessage(res.error || 'Production image upload provider is not configured. Paste hosted image URL or configure Cloudinary/Vercel Blob/Supabase/R2.');
       return;
     }
     updateSlot(index, res.image);
@@ -74,7 +74,7 @@ export default function ListingImagePicker({ images, onChange, label = 'Product 
     <div className="listingImagePicker span2">
       <div>
         <b>{label}</b>
-        <p className="muted">{helpText || 'Optional. Add up to 3 jpg, jpeg, png or webp product images by URL or file upload.'}</p>
+        <p className="muted">{helpText || 'Optional. Add up to 3 jpg, jpeg, png or webp product images. Image URL works immediately; production file upload needs Cloudinary/Vercel Blob/Supabase/R2.'}</p>
       </div>
       <div className="listingImageGrid">
         {slots.map((image, index) => (

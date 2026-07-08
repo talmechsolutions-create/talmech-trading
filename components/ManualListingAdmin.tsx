@@ -3,7 +3,15 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import ListingImagePicker from '@/components/ListingImagePicker';
+import MetalProductSelector from '@/components/MetalProductSelector';
 import type { ListingImage } from '@/lib/listingImages';
+import {
+  WHATSAPP_CERTIFICATE_OPTIONS,
+  WHATSAPP_PRICE_UNITS,
+  WHATSAPP_QUANTITY_UNITS,
+  WHATSAPP_STOCK_STATUS_OPTIONS,
+  WHATSAPP_TAX_STATUS_OPTIONS,
+} from '@/lib/whatsappUploadTypes';
 
 const accountTypes = ['Buyer', 'Seller', 'Trader', 'Supplier', 'Manufacturer'];
 const listingTypes = ['Sell Listing', 'Buy Requirement', 'Scrap Listing', 'Trader Deal'];
@@ -29,9 +37,9 @@ const initialListing = {
   productForm: '',
   sizeOrSpecification: '',
   quantity: '',
-  quantityUnit: 'KG',
+  quantityUnit: 'kg',
   price: '',
-  priceUnit: 'per kg',
+  priceUnit: 'price on request',
   taxStatus: 'not sure',
   stockStatus: 'Ready stock',
   certificateAvailable: '',
@@ -49,6 +57,15 @@ function Field({ label, value }: { label: string; value: unknown }) {
   return <p><b>{label}:</b> {String(value || '-')}</p>;
 }
 
+function FieldLabel({ label, status }: { label: string; status: 'Required' | 'Optional' | 'Recommended' }) {
+  return (
+    <span className="fieldLabel">
+      {label}
+      <span className={`fieldBadge ${status.toLowerCase()}`}>{status}</span>
+    </span>
+  );
+}
+
 export default function ManualListingAdmin() {
   const [account, setAccountForm] = useState(initialAccount);
   const [listing, setListingForm] = useState(initialListing);
@@ -64,6 +81,10 @@ export default function ManualListingAdmin() {
     setListingForm((form) => ({ ...form, [key]: value }));
   }
 
+  function mergeListing(patch: Record<string, any>) {
+    setListingForm((form) => ({ ...form, ...patch }));
+  }
+
   async function submit() {
     setSaving(true);
     setMessage('Creating client account and listing...');
@@ -72,10 +93,10 @@ export default function ManualListingAdmin() {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ account, listing }),
-    }).then((response) => response.json()).catch(() => ({ ok: false, error: 'Unable to create account and listing.' }));
+    }).then((response) => response.json()).catch(() => ({ ok: false, message: 'Unable to create account and listing.' }));
     setSaving(false);
     if (!res.ok) {
-      setMessage(res.error || 'Unable to create account and listing.');
+      setMessage(res.message || res.error || 'Unable to create account and listing.');
       return;
     }
     setMessage(res.accountAction === 'created'
@@ -92,6 +113,7 @@ export default function ManualListingAdmin() {
             <span className="eyebrow">Protected manual workflow</span>
             <h1 className="pageTitle">Create Client + Listing</h1>
             <p className="muted">Use this when the client details came through WhatsApp, phone, email, or an offline conversation and there is no public WhatsApp submission row yet.</p>
+            <p className="notice slimNotice">Only primary details are required. Talmech can complete the remaining information after verification.</p>
           </div>
           <div className="row">
             <Link className="btn secondary" href="/admin/whatsapp-uploads">Back to WhatsApp uploads</Link>
@@ -151,19 +173,19 @@ export default function ManualListingAdmin() {
         <div className="manualListingLayout">
           <section className="panel manualListingPanel">
             <span className="pill">Section 1</span>
-            <h2>Client Account</h2>
+            <h2>Primary client details</h2>
             <p className="muted">If email or mobile already exists, this flow links the listing to the existing account instead of creating a duplicate.</p>
             <div className="formGrid">
-              <label>Account type<select value={account.accountType} onChange={(event) => setAccount('accountType', event.target.value)}>{accountTypes.map((item) => <option key={item}>{item}</option>)}</select></label>
-              <label>Full name<input className="input" value={account.fullName} onChange={(event) => setAccount('fullName', event.target.value)} /></label>
-              <label>Firm name<input className="input" value={account.firmName} onChange={(event) => setAccount('firmName', event.target.value)} /></label>
-              <label>Email<input className="input" type="email" value={account.email} onChange={(event) => setAccount('email', event.target.value)} /></label>
-              <label>Mobile<input className="input" value={account.mobile} onChange={(event) => setAccount('mobile', event.target.value)} /></label>
-              <label>Alternate mobile<input className="input" value={account.alternateMobile} onChange={(event) => setAccount('alternateMobile', event.target.value)} /></label>
-              <label>GST number<input className="input" value={account.gstNumber} onChange={(event) => setAccount('gstNumber', event.target.value.toUpperCase())} /></label>
-              <label>City<input className="input" value={account.city} onChange={(event) => setAccount('city', event.target.value)} /></label>
-              <label>State<input className="input" value={account.state} onChange={(event) => setAccount('state', event.target.value)} /></label>
-              <label className="span2">Address<textarea value={account.address} onChange={(event) => setAccount('address', event.target.value)} /></label>
+              <label><FieldLabel label="Account type" status="Required" /><select value={account.accountType} onChange={(event) => setAccount('accountType', event.target.value)}>{accountTypes.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label><FieldLabel label="Full name" status="Recommended" /><input className="input" value={account.fullName} onChange={(event) => setAccount('fullName', event.target.value)} placeholder="Required if firm name is blank" /></label>
+              <label><FieldLabel label="Firm name" status="Recommended" /><input className="input" value={account.firmName} onChange={(event) => setAccount('firmName', event.target.value)} placeholder="Required if full name is blank" /></label>
+              <label><FieldLabel label="Email" status="Recommended" /><input className="input" type="email" value={account.email} onChange={(event) => setAccount('email', event.target.value)} placeholder="Required if mobile is blank" /></label>
+              <label><FieldLabel label="Mobile" status="Recommended" /><input className="input" value={account.mobile} onChange={(event) => setAccount('mobile', event.target.value)} placeholder="Required if email is blank" /></label>
+              <label><FieldLabel label="City" status="Recommended" /><input className="input" value={account.city} onChange={(event) => setAccount('city', event.target.value)} /></label>
+              <label><FieldLabel label="State" status="Recommended" /><input className="input" value={account.state} onChange={(event) => setAccount('state', event.target.value)} /></label>
+              <label><FieldLabel label="GST number" status="Optional" /><input className="input" value={account.gstNumber} onChange={(event) => setAccount('gstNumber', event.target.value.toUpperCase())} /></label>
+              <label><FieldLabel label="Alternate mobile" status="Optional" /><input className="input" value={account.alternateMobile} onChange={(event) => setAccount('alternateMobile', event.target.value)} /></label>
+              <label className="span2"><FieldLabel label="Address" status="Optional" /><textarea value={account.address} onChange={(event) => setAccount('address', event.target.value)} /></label>
             </div>
             <div className="manualPasswordStrategy">
               <b>Password strategy</b>
@@ -173,33 +195,42 @@ export default function ManualListingAdmin() {
 
           <section className="panel manualListingPanel">
             <span className="pill">Section 2</span>
-            <h2>Listing / Requirement</h2>
+            <h2>Primary listing details</h2>
             <p className="muted">Admin-created listings are linked to the client workspace and appear in the admin listings console.</p>
             <div className="formGrid">
-              <label>Listing type<select value={listing.listingType} onChange={(event) => setListing('listingType', event.target.value)}>{listingTypes.map((item) => <option key={item}>{item}</option>)}</select></label>
-              <label>Metal<input className="input" value={listing.metal} onChange={(event) => setListing('metal', event.target.value)} /></label>
-              <label>Product<input className="input" value={listing.product} onChange={(event) => setListing('product', event.target.value)} /></label>
-              <label>Grade<input className="input" value={listing.grade} onChange={(event) => setListing('grade', event.target.value)} /></label>
-              <label>Product form<input className="input" value={listing.productForm} onChange={(event) => setListing('productForm', event.target.value)} /></label>
-              <label>Size / specification<input className="input" value={listing.sizeOrSpecification} onChange={(event) => setListing('sizeOrSpecification', event.target.value)} /></label>
-              <label>Quantity<input className="input" value={listing.quantity} onChange={(event) => setListing('quantity', event.target.value)} /></label>
-              <label>Quantity unit<input className="input" value={listing.quantityUnit} onChange={(event) => setListing('quantityUnit', event.target.value)} /></label>
-              <label>Price / target price<input className="input" value={listing.price} onChange={(event) => setListing('price', event.target.value)} /></label>
-              <label>Price unit<input className="input" value={listing.priceUnit} onChange={(event) => setListing('priceUnit', event.target.value)} /></label>
-              <label>GST<select value={listing.taxStatus} onChange={(event) => setListing('taxStatus', event.target.value)}><option>not sure</option><option>GST included</option><option>GST extra</option></select></label>
-              <label>Stock status<input className="input" value={listing.stockStatus} onChange={(event) => setListing('stockStatus', event.target.value)} /></label>
-              <label>Certificate available<input className="input" value={listing.certificateAvailable} onChange={(event) => setListing('certificateAvailable', event.target.value)} /></label>
-              <label>Certificate required<input className="input" value={listing.certificateRequired} onChange={(event) => setListing('certificateRequired', event.target.value)} /></label>
-              <label className="span2">Dispatch location<textarea value={listing.dispatchLocation} onChange={(event) => setListing('dispatchLocation', event.target.value)} /></label>
-              <label className="span2">Delivery location<textarea value={listing.deliveryLocation} onChange={(event) => setListing('deliveryLocation', event.target.value)} /></label>
-              <label>City<input className="input" value={listing.city} onChange={(event) => setListing('city', event.target.value)} /></label>
-              <label>State<input className="input" value={listing.state} onChange={(event) => setListing('state', event.target.value)} /></label>
-              <label>Delivery timeline<input className="input" value={listing.deliveryTimeline} onChange={(event) => setListing('deliveryTimeline', event.target.value)} /></label>
-              <label className="span2">Remarks<textarea value={listing.remarks} onChange={(event) => setListing('remarks', event.target.value)} /></label>
+              <label><FieldLabel label="Listing type" status="Required" /><select value={listing.listingType} onChange={(event) => setListing('listingType', event.target.value)}>{listingTypes.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label><FieldLabel label="Quantity" status="Required" /><input className="input" value={listing.quantity} onChange={(event) => setListing('quantity', event.target.value)} placeholder="Example: 5000" /></label>
+              <label><FieldLabel label="Quantity unit" status="Required" /><select value={listing.quantityUnit} onChange={(event) => setListing('quantityUnit', event.target.value)}>{WHATSAPP_QUANTITY_UNITS.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+              <div className="span2">
+                <MetalProductSelector value={listing} onChange={mergeListing} requiredLevel="metal-product" mode="admin" />
+              </div>
+              <label><FieldLabel label="Listing city" status="Recommended" /><input className="input" value={listing.city} onChange={(event) => setListing('city', event.target.value)} placeholder={account.city || 'Auto-fills from client city if blank'} /></label>
+              <label><FieldLabel label="Listing state" status="Recommended" /><input className="input" value={listing.state} onChange={(event) => setListing('state', event.target.value)} placeholder={account.state || 'Auto-fills from client state if blank'} /></label>
+              <label className="span2"><FieldLabel label="Stock note / remarks" status="Optional" /><textarea value={listing.remarks} onChange={(event) => setListing('remarks', event.target.value)} placeholder="Use this if quantity is not confirmed yet." /></label>
+            </div>
+
+            <div className="manualSubsection">
+              <h3>Optional commercial details</h3>
+              <div className="formGrid">
+                <label><FieldLabel label="Size / specification" status="Optional" /><input className="input" value={listing.sizeOrSpecification} onChange={(event) => setListing('sizeOrSpecification', event.target.value)} /></label>
+                <label><FieldLabel label="Price / target price" status="Optional" /><input className="input" value={listing.price} onChange={(event) => setListing('price', event.target.value)} placeholder="Leave blank for price on request" /></label>
+                <label><FieldLabel label="Price unit" status="Optional" /><select value={listing.priceUnit} onChange={(event) => setListing('priceUnit', event.target.value)}>{WHATSAPP_PRICE_UNITS.map((unit) => <option key={unit}>{unit}</option>)}</select></label>
+                <label><FieldLabel label="Tax / GST status" status="Optional" /><select value={listing.taxStatus} onChange={(event) => setListing('taxStatus', event.target.value)}>{WHATSAPP_TAX_STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+                <label><FieldLabel label="Stock status" status="Optional" /><select value={listing.stockStatus} onChange={(event) => setListing('stockStatus', event.target.value)}>{WHATSAPP_STOCK_STATUS_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+                <label><FieldLabel label="Delivery timeline" status="Optional" /><input className="input" value={listing.deliveryTimeline} onChange={(event) => setListing('deliveryTimeline', event.target.value)} /></label>
+                <label><FieldLabel label="Certificate available" status="Optional" /><select value={listing.certificateAvailable} onChange={(event) => setListing('certificateAvailable', event.target.value)}><option value="">Optional</option>{WHATSAPP_CERTIFICATE_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+                <label><FieldLabel label="Certificate required" status="Optional" /><select value={listing.certificateRequired} onChange={(event) => setListing('certificateRequired', event.target.value)}><option value="">Optional</option>{WHATSAPP_CERTIFICATE_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+                <label className="span2"><FieldLabel label="Dispatch location" status="Optional" /><textarea value={listing.dispatchLocation} onChange={(event) => setListing('dispatchLocation', event.target.value)} placeholder="Auto-generates from city/state if blank" /></label>
+                <label className="span2"><FieldLabel label="Delivery location" status="Optional" /><textarea value={listing.deliveryLocation} onChange={(event) => setListing('deliveryLocation', event.target.value)} placeholder="Auto-generates from city/state if blank" /></label>
+              </div>
+            </div>
+
+            <div className="manualSubsection">
+              <h3>Optional photos / documents</h3>
               <ListingImagePicker
                 images={listing.productImages || []}
                 onChange={(images) => setListing('productImages', images as any)}
-                helpText="Optional. Product images improve buyer response. Upload works in local dev; production should use a configured storage provider or hosted image URLs."
+                helpText="Optional. Image URLs work immediately. Production file uploads need Cloudinary, Vercel Blob, Supabase, or R2."
               />
             </div>
           </section>
