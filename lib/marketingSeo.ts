@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { productCategories } from '@/lib/marketplaceData';
 import { productSlug } from '@/lib/productImages';
+import { canUseJsonFileStorage, requireJsonFileStorage } from '@/lib/storageMode';
 
 const dataDir = path.join(process.cwd(), 'data');
 export const marketingCampaignsFile = path.join(dataDir, 'marketing-campaigns.json');
@@ -147,6 +148,7 @@ export const apiRegistry: ApiRegistryItem[] = [
 ];
 
 export async function readJsonArray(file: string) {
+  if (!canUseJsonFileStorage()) return [];
   try {
     const txt = await fs.readFile(file, 'utf8');
     const rows = JSON.parse(txt);
@@ -157,6 +159,7 @@ export async function readJsonArray(file: string) {
 }
 
 export async function writeJsonArray(file: string, rows: any[]) {
+  requireJsonFileStorage();
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, JSON.stringify(rows, null, 2), 'utf8');
 }

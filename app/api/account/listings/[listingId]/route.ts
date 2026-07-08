@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientSessionUser } from '@/lib/clientAuth';
 import { findListing, updateListing } from '@/lib/proDb';
+import { publicStorageError } from '@/lib/storageMode';
 import { buildWorkspaceListing } from '@/lib/workspaceListings';
 import { sanitizeString } from '@/lib/validation';
 
@@ -59,6 +60,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { listingId:
     lockStatus: existing.lockStatus || 'Available',
     raw: { ...(existing.raw || {}), ...rebuilt.raw, listingApprovalStatus: 'Pending Admin Review', listingVisibility: 'draft' },
   };
-  const listing = await updateListing(existing.id, patch);
-  return NextResponse.json({ ok: true, listing });
+  try {
+    const listing = await updateListing(existing.id, patch);
+    return NextResponse.json({ ok: true, listing });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to update listing.' }, { status: 500 });
+  }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createCrmLead, listCrmLeads } from '@/lib/proDb';
 import { csv } from '@/lib/marketplaceStore';
+import { getStorageMode, publicStorageError } from '@/lib/storageMode';
 import {
   isValidEmail,
   isValidIndianMobile,
@@ -15,7 +16,7 @@ const headers = ['id','createdAt','sourceLeadId','leadType','stage','company','c
 export async function GET(req: NextRequest) {
   const rows = await listCrmLeads();
   if (req.nextUrl.searchParams.get('format') === 'csv') return new NextResponse(csv(rows, headers), {headers:{'content-type':'text/csv; charset=utf-8','content-disposition':'attachment; filename="talmech-crm-leads.csv"'}});
-  return NextResponse.json({leads:rows, updatedAt:new Date().toISOString(), storage: process.env.DATABASE_URL ? 'database' : 'json-fallback'});
+  return NextResponse.json({leads:rows, updatedAt:new Date().toISOString(), storage: getStorageMode()});
 }
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -41,6 +42,12 @@ export async function POST(req: NextRequest) {
     notes: sanitizeMultiline(body.notes || body.technicalDetails, 1600),
     raw: {},
   };
-  const created = await createCrmLead(row);
-  return NextResponse.json({ok:true, lead:created});
+  try {
+    const created = await createCrmLead(row);
+    return NextResponse.json({ok:true, lead:created});
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to save CRM lead.' }, { status: 500 });
+  }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRazorpayWebhookSignature } from '@/lib/payments';
 import { createPayment } from '@/lib/proDb';
+import { publicStorageError } from '@/lib/storageMode';
 import { sanitizeString } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -80,14 +81,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('RAZORPAY WEBHOOK ERROR:', error);
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
 
     return NextResponse.json(
       {
         ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Razorpay webhook processing failed.',
+        error: 'Razorpay webhook processing failed.',
       },
       { status: 500 }
     );

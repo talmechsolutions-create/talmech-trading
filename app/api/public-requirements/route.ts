@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { csv, safePublicListing } from '@/lib/marketplaceStore';
 import { leadEmailHtml, sendOrQueueEmail } from '@/lib/email';
 import { clearLeads, createLead, createListing, listLeads } from '@/lib/proDb';
+import { getStorageMode, publicStorageError } from '@/lib/storageMode';
 import {
   collectMissing,
   isValidEmail,
@@ -20,7 +21,7 @@ const leadHeaders = ['id','createdAt','intent','companyName','contactName','phon
 export async function GET(req: NextRequest) {
   const leads = await listLeads();
   if (req.nextUrl.searchParams.get('format') === 'csv') return new NextResponse(csv(leads, leadHeaders), { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="talmech-admin-leads.csv"' } });
-  return NextResponse.json({ leads, updatedAt: new Date().toISOString(), storage: process.env.DATABASE_URL ? 'database' : 'json-fallback' });
+  return NextResponse.json({ leads, updatedAt: new Date().toISOString(), storage: getStorageMode() });
 }
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -80,12 +81,28 @@ export async function POST(req: NextRequest) {
     mediaGallery: Array.isArray(body.mediaGallery) ? body.mediaGallery.slice(0, 6) : [],
     createMarketplaceListing: body.createMarketplaceListing !== false,
   };
-  const savedLead = await createLead(lead);
+  let savedLead;
   let listing = null;
-  if (['SELL','BUY','SCRAP'].includes(String(lead.intent)) && !lead.listingId && lead.createMarketplaceListing !== false && lead.source !== 'Public marketplace CTA') { listing = await createListing(safePublicListing(savedLead)); }
+  try {
+    savedLead = await createLead(lead);
+    if (['SELL','BUY','SCRAP'].includes(String(lead.intent)) && !lead.listingId && lead.createMarketplaceListing !== false && lead.source !== 'Public marketplace CTA') { listing = await createListing(safePublicListing(savedLead)); }
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to save requirement.' }, { status: 500 });
+  }
   const html = leadEmailHtml(savedLead);
   const customerEmail = await sendOrQueueEmail({to: savedLead.email, subject: `Talmech Trading confirmation ${savedLead.id}`, html, leadId: savedLead.id});
   const adminEmail = await sendOrQueueEmail({to: process.env.ADMIN_NOTIFICATION_EMAIL, subject: `New Talmech website lead ${savedLead.id} - ${savedLead.intent} ${savedLead.metal}`, html, leadId: savedLead.id});
   return NextResponse.json({ ok: true, lead: savedLead, listing, email: { customerEmail, adminEmail } });
 }
-export async function DELETE() { await clearLeads(); return NextResponse.json({ ok: true }); }
+export async function DELETE() {
+  try {
+    await clearLeads();
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to clear requirements.' }, { status: 500 });
+  }
+}

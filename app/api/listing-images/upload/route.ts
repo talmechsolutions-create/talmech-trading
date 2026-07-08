@@ -41,19 +41,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: validation.error || 'Invalid image.' }, { status: 400 });
   }
 
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({
+      ok: false,
+      error: 'Production image upload provider is not configured. Paste hosted image URL or configure Cloudinary/Vercel Blob/Supabase/R2.',
+      provider: provider || 'none',
+    }, { status: 409 });
+  }
+
   if (provider && provider !== 'local-dev') {
     return NextResponse.json({
       ok: false,
       error: 'Configured image provider hook is not implemented yet. Use safe image URL fields or connect Cloudinary, Supabase Storage, R2, or Vercel Blob.',
       provider,
     }, { status: 501 });
-  }
-
-  if (process.env.NODE_ENV === 'production' && provider !== 'local-dev') {
-    return NextResponse.json({
-      ok: false,
-      error: 'Production image upload provider is not configured. Paste hosted image URL or configure Cloudinary/Vercel Blob/Supabase/R2.',
-    }, { status: 409 });
   }
 
   const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'listings');

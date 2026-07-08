@@ -4,6 +4,7 @@ import { calculateDealPricing } from '@/lib/pricing';
 import { createPriceLock, listPriceLocks, updatePriceLock, listLogisticsProviders } from '@/lib/proDb';
 import { selectDefaultLogisticsProvider, estimateProviderVehicleCost } from '@/lib/logistics';
 import { getOpenRouteServiceRoute } from '@/lib/routeService';
+import { getStorageMode, publicStorageError } from '@/lib/storageMode';
 import {
   isValidEmail,
   isValidIndianMobile,
@@ -81,7 +82,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     locks: rows,
     updatedAt: new Date().toISOString(),
-    storage: process.env.DATABASE_URL ? 'database' : 'json-fallback',
+    storage: getStorageMode(),
   });
 }
 
@@ -317,7 +318,14 @@ export async function POST(req: NextRequest) {
     logisticsTerms: logisticsRequired ? 'Logistics provider assignment, pickup slot, freight rate, vehicle rate/km, unloading, insurance, detention, road permit and final delivery responsibility are subject to Talmech admin confirmation and vendor contract terms.' : 'Buyer did not request Talmech logistics at checkout. Product payment is processed without freight.',
   };
 
-  const lock = await createPriceLock(row);
+  let lock;
+  try {
+    lock = await createPriceLock(row);
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to create price lock.' }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
@@ -347,10 +355,17 @@ export async function PATCH(req: NextRequest) {
     logisticsEtaBy: sanitizeString(sourcePatch.logisticsEtaBy, 120) || undefined,
   };
 
-  const lock = await updatePriceLock(
-    sanitizeString(body.id, 80),
-    Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined))
-  );
+  let lock;
+  try {
+    lock = await updatePriceLock(
+      sanitizeString(body.id, 80),
+      Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined))
+    );
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to update price lock.' }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: Boolean(lock),

@@ -1,5 +1,7 @@
 import path from 'path';
 import { readJsonArray, writeJsonArray } from '@/lib/marketplaceStore';
+import { prisma, useDatabase } from '@/lib/proDb';
+import { isProduction, persistentStorageUnavailable, requirePersistentStorage } from '@/lib/storageMode';
 import { sanitizeMultiline, sanitizeString } from '@/lib/validation';
 
 export type SupportTicketStatus = 'Open' | 'In Progress' | 'Waiting for Client' | 'Resolved' | 'Closed';
@@ -61,9 +63,49 @@ function normalizeTicket(row: any): SupportTicket {
   };
 }
 
+function dateString(value: unknown) {
+  if (value instanceof Date) return value.toISOString();
+  return sanitizeString(value, 40);
+}
+
+function fromDbTicket(row: any): SupportTicket {
+  return normalizeTicket({
+    ...(row?.raw && typeof row.raw === 'object' ? row.raw : {}),
+    ticketId: row?.id,
+    ownerUserId: row?.ownerUserId,
+    accountId: row?.accountId,
+    firmName: row?.firmName,
+    contactName: row?.contactName,
+    email: row?.email,
+    mobile: row?.mobile,
+    category: row?.category,
+    priority: row?.priority,
+    subject: row?.subject,
+    status: row?.status,
+    createdAt: dateString(row?.createdAt),
+    updatedAt: dateString(row?.updatedAt),
+  });
+}
+
+async function withTicketDb<T>(fn: () => Promise<T>, fallback: () => Promise<T>) {
+  if (!useDatabase()) return fallback();
+  try {
+    return await fn();
+  } catch (error) {
+    console.error('[Support ticket DB error]', error);
+    if (isProduction()) throw persistentStorageUnavailable();
+    return fallback();
+  }
+}
+
 export async function listSupportTickets() {
-  const rows = await readJsonArray(supportTicketsFile);
-  return rows.map(normalizeTicket).sort((a: SupportTicket, b: SupportTicket) => b.createdAt.localeCompare(a.createdAt));
+  return withTicketDb(
+    async () => (await prisma.supportTicket.findMany({ orderBy: { createdAt: 'desc' } })).map(fromDbTicket),
+    async () => {
+      const rows = await readJsonArray(supportTicketsFile);
+      return rows.map(normalizeTicket).sort((a: SupportTicket, b: SupportTicket) => b.createdAt.localeCompare(a.createdAt));
+    }
+  );
 }
 
 export async function listSupportTicketsForUser(userId: string) {
@@ -72,6 +114,7 @@ export async function listSupportTicketsForUser(userId: string) {
 }
 
 export async function createSupportTicket(input: Partial<SupportTicket>) {
+  requirePersistentStorage();
   const now = new Date().toISOString();
   const ticket = normalizeTicket({
     ...input,
@@ -81,13 +124,36 @@ export async function createSupportTicket(input: Partial<SupportTicket>) {
     status: 'Open',
     timeline: [{ at: now, by: 'client', message: sanitizeMultiline(input.message, 1200) || 'Ticket opened.', status: 'Open' }],
   });
-  const rows = await listSupportTickets();
-  rows.unshift(ticket);
-  await writeJsonArray(supportTicketsFile, rows);
-  return ticket;
+  return withTicketDb(
+    async () => fromDbTicket(await prisma.supportTicket.create({
+      data: {
+        id: ticket.ticketId,
+        createdAt: new Date(ticket.createdAt),
+        updatedAt: new Date(ticket.updatedAt),
+        ownerUserId: ticket.ownerUserId,
+        accountId: ticket.accountId,
+        firmName: ticket.firmName,
+        contactName: ticket.contactName,
+        email: ticket.email,
+        mobile: ticket.mobile,
+        category: ticket.category,
+        priority: ticket.priority,
+        subject: ticket.subject,
+        status: ticket.status,
+        raw: ticket,
+      },
+    })),
+    async () => {
+      const rows = await listSupportTickets();
+      rows.unshift(ticket);
+      await writeJsonArray(supportTicketsFile, rows);
+      return ticket;
+    }
+  );
 }
 
 export async function updateSupportTicket(ticketId: string, patch: { status?: string; adminNote?: string; reply?: string; by?: 'client' | 'admin' }) {
+  requirePersistentStorage();
   const cleanId = sanitizeString(ticketId, 80);
   const rows = await listSupportTickets();
   const index = rows.findIndex((ticket: SupportTicket) => ticket.ticketId === cleanId);
@@ -115,6 +181,19 @@ export async function updateSupportTicket(ticketId: string, patch: { status?: st
     updatedAt: now,
     timeline,
   });
-  await writeJsonArray(supportTicketsFile, rows);
-  return rows[index];
+  const ticket = rows[index];
+  return withTicketDb(
+    async () => fromDbTicket(await prisma.supportTicket.update({
+      where: { id: cleanId },
+      data: {
+        updatedAt: new Date(ticket.updatedAt),
+        status: ticket.status,
+        raw: ticket,
+      },
+    })),
+    async () => {
+      await writeJsonArray(supportTicketsFile, rows);
+      return ticket;
+    }
+  );
 }

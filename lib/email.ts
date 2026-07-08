@@ -1,14 +1,17 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { canUseJsonFileStorage, requireJsonFileStorage } from '@/lib/storageMode';
 
 const outboxFile = path.join(process.cwd(), 'data', 'email-outbox.json');
 
 async function readOutbox() {
+  if (!canUseJsonFileStorage()) return [];
   await fs.mkdir(path.dirname(outboxFile), { recursive: true });
   try { return JSON.parse(await fs.readFile(outboxFile, 'utf8')); } catch { return []; }
 }
 
 async function writeOutbox(rows: any[]) {
+  requireJsonFileStorage();
   await fs.mkdir(path.dirname(outboxFile), { recursive: true });
   await fs.writeFile(outboxFile, JSON.stringify(rows, null, 2));
 }
@@ -53,6 +56,14 @@ export async function sendOrQueueEmail({ to, subject, html, leadId }: { to?: str
       row.status = 'queued_after_send_exception';
       (row as any).providerError = err?.message || String(err);
     }
+  }
+  if (!canUseJsonFileStorage()) {
+    return {
+      status: row.status === 'queued' ? 'not_sent_no_provider' : 'provider_error_not_queued',
+      provider: apiKey ? 'resend' : 'none',
+      reason: 'Email provider is not configured or failed, and local email outbox is disabled in production.',
+      providerError: (row as any).providerError,
+    };
   }
   const rows = await readOutbox();
   rows.unshift(row);

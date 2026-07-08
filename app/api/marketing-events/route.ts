@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { marketingEventsFile, readJsonArray, writeJsonArray } from '@/lib/marketingSeo';
+import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,7 +52,13 @@ export async function POST(req: Request) {
     device: clean(body.device, '', 40),
     viewport: clean(body.viewport, '', 40),
   };
-  events.unshift(event);
-  await writeJsonArray(marketingEventsFile, events.slice(0, 10000));
-  return NextResponse.json({ ok: true });
+  try {
+    events.unshift(event);
+    await writeJsonArray(marketingEventsFile, events.slice(0, 10000));
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to save marketing event.' }, { status: 500 });
+  }
 }

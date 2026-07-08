@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/adminSecurity';
 import { findUser } from '@/lib/proDb';
+import { publicStorageError } from '@/lib/storageMode';
 import { findWhatsappUpload, updateWhatsappUploadListingCreation } from '@/lib/whatsappUploadStore';
 import { createWorkspaceListing, listingInputFromWhatsapp } from '@/lib/workspaceListings';
 import { sanitizeString } from '@/lib/validation';
@@ -50,29 +51,35 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ ok: false, error: 'Metal and product are required before creating a listing.' }, { status: 400 });
   }
 
-  const listing = await createWorkspaceListing(input, {
-    owner: account || undefined,
-    source: 'whatsapp-assisted-admin',
-    createdByAdmin: true,
-    whatsappSubmissionId: submission.submissionId,
-    approved: sanitizeString(body.listingVisibility, 40) !== 'draft',
-    prefix: 'LIST-WA',
-  });
+  try {
+    const listing = await createWorkspaceListing(input, {
+      owner: account || undefined,
+      source: 'whatsapp-assisted-admin',
+      createdByAdmin: true,
+      whatsappSubmissionId: submission.submissionId,
+      approved: sanitizeString(body.listingVisibility, 40) !== 'draft',
+      prefix: 'LIST-WA',
+    });
 
-  const listingIds = [...existingIds, listing.id];
-  const now = new Date().toISOString();
-  const updatedSubmission = await updateWhatsappUploadListingCreation(submission.submissionId, {
-    status: 'Listing Created',
-    listingIds,
-    accountId: account?.id || accountId,
-    lastListingId: listing.id,
-    lastListingType: sanitizeString(input.listingType || input.type, 80) || listing.type,
-    createdAt: submission.listingCreation?.createdAt || now,
-    updatedAt: now,
-  }, {
-    status: 'Converted',
-    note: `Marketplace listing ${listing.id} created from WhatsApp submission.`,
-  });
+    const listingIds = [...existingIds, listing.id];
+    const now = new Date().toISOString();
+    const updatedSubmission = await updateWhatsappUploadListingCreation(submission.submissionId, {
+      status: 'Listing Created',
+      listingIds,
+      accountId: account?.id || accountId,
+      lastListingId: listing.id,
+      lastListingType: sanitizeString(input.listingType || input.type, 80) || listing.type,
+      createdAt: submission.listingCreation?.createdAt || now,
+      updatedAt: now,
+    }, {
+      status: 'Converted',
+      note: `Marketplace listing ${listing.id} created from WhatsApp submission.`,
+    });
 
-  return NextResponse.json({ ok: true, listing, submission: updatedSubmission });
+    return NextResponse.json({ ok: true, listing, submission: updatedSubmission });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to create listing.' }, { status: 500 });
+  }
 }

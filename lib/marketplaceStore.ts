@@ -1,24 +1,30 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { canUseJsonFileStorage, getStorageMode, requireJsonFileStorage } from '@/lib/storageMode';
 
 const dataDir = path.join(process.cwd(), 'data');
 export const leadsFile = path.join(dataDir, 'public-leads.json');
 export const listingsFile = path.join(dataDir, 'marketplace-listings.json');
 
 async function ensureFile(file: string) {
+  if (!canUseJsonFileStorage()) return;
   await fs.mkdir(path.dirname(file), { recursive: true });
   try { await fs.access(file); } catch { await fs.writeFile(file, '[]'); }
 }
 
 export async function readJsonArray(file: string) {
+  if (!canUseJsonFileStorage()) return [];
   await ensureFile(file);
   try { return JSON.parse(((await fs.readFile(file, 'utf8')) || '[]').replace(/^\uFEFF/, '')); } catch { return []; }
 }
 
 export async function writeJsonArray(file: string, rows: any[]) {
+  requireJsonFileStorage();
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, JSON.stringify(rows, null, 2));
 }
+
+export { getStorageMode };
 
 export function csv(rows: any[], headers: string[]) {
   const escape = (v:any) => `"${String(v ?? '').replaceAll('"','""')}"`;

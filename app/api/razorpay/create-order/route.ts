@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createRazorpayOrder } from '@/lib/payments';
 import { findPriceLock, updatePriceLock } from '@/lib/proDb';
+import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
 
@@ -98,14 +99,13 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('CREATE ORDER ROUTE ERROR:', error);
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
 
     return NextResponse.json(
       {
         ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Unable to create Razorpay order',
+        error: 'Unable to create Razorpay order',
       },
       { status: 500 }
     );

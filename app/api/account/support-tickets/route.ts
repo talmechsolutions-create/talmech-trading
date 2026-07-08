@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientSessionUser } from '@/lib/clientAuth';
+import { publicStorageError } from '@/lib/storageMode';
 import { createSupportTicket, listSupportTicketsForUser } from '@/lib/supportTicketStore';
 import { sanitizeMultiline, sanitizeString } from '@/lib/validation';
 
@@ -19,17 +20,23 @@ export async function POST(req: NextRequest) {
   if (!sanitizeString(body.subject, 160) || !sanitizeMultiline(body.message, 2000)) {
     return NextResponse.json({ ok: false, error: 'Subject and message are required.' }, { status: 400 });
   }
-  const ticket = await createSupportTicket({
-    ownerUserId: user.id,
-    accountId: user.id,
-    firmName: user.firmName || '',
-    contactName: user.ownerName || '',
-    email: user.email || '',
-    mobile: user.primaryMobile || '',
-    category: sanitizeString(body.category || 'General support', 80),
-    priority: sanitizeString(body.priority || 'Normal', 40),
-    subject: sanitizeString(body.subject, 160),
-    message: sanitizeMultiline(body.message, 2000),
-  });
-  return NextResponse.json({ ok: true, ticket });
+  try {
+    const ticket = await createSupportTicket({
+      ownerUserId: user.id,
+      accountId: user.id,
+      firmName: user.firmName || '',
+      contactName: user.ownerName || '',
+      email: user.email || '',
+      mobile: user.primaryMobile || '',
+      category: sanitizeString(body.category || 'General support', 80),
+      priority: sanitizeString(body.priority || 'Normal', 40),
+      subject: sanitizeString(body.subject, 160),
+      message: sanitizeMultiline(body.message, 2000),
+    });
+    return NextResponse.json({ ok: true, ticket });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to create support ticket.' }, { status: 500 });
+  }
 }

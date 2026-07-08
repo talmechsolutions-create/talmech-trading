@@ -2,9 +2,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { leadsFile, listingsFile, readJsonArray, writeJsonArray } from '@/lib/marketplaceStore';
+import { isProduction, persistentStorageUnavailable, requirePersistentStorage } from '@/lib/storageMode';
 
 const g = globalThis as unknown as { prisma?: PrismaClient };
-const prisma = g.prisma || new PrismaClient();
+export const prisma = g.prisma || new PrismaClient();
 if (process.env.NODE_ENV !== 'production') g.prisma = prisma;
 
 const dataDir = path.join(process.cwd(), 'data');
@@ -20,7 +21,7 @@ const paymentsFile = path.join(dataDir, 'payments.json');
 const payoutsFile = path.join(dataDir, 'admin-payouts.json');
 const logisticsProvidersFile = path.join(dataDir, 'logistics-providers.json');
 
-export const useDatabase = () => Boolean(process.env.DATABASE_URL);
+export const useDatabase = () => Boolean((process.env.DATABASE_URL || '').trim());
 
 /*
   Production readiness:
@@ -34,7 +35,11 @@ function clean<T extends Record<string, any>>(obj: T): T {
 
 async function withDb<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
   if (!useDatabase()) return fallback();
-  try { return await fn(); } catch (err) { console.error('[Talmech DB fallback]', err); return fallback(); }
+  try { return await fn(); } catch (err) {
+    console.error('[Talmech DB error]', err);
+    if (isProduction()) throw persistentStorageUnavailable();
+    return fallback();
+  }
 }
 
 function objectOrEmpty(value: unknown) {
@@ -124,6 +129,7 @@ export async function listLeads() {
 }
 
 export async function createLead(lead: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const row = await prisma.publicLead.create({ data: clean({
       id: lead.id,
@@ -161,6 +167,7 @@ export async function createLead(lead: any) {
 }
 
 export async function clearLeads() {
+  requirePersistentStorage();
   return withDb(async () => { await prisma.publicLead.deleteMany({}); return true; }, async () => { await writeJsonArray(leadsFile, []); return true; });
 }
 
@@ -175,6 +182,7 @@ export async function listListings(includeDemo = false, demoRows: any[] = []) {
 }
 
 export async function createListing(listing: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const row = await prisma.marketplaceListing.create({ data: clean({
       id: listing.id,
@@ -221,6 +229,7 @@ export async function findListing(id: string) {
 }
 
 export async function updateListing(id: string, patch: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const existing = await prisma.marketplaceListing.findUnique({ where: { id } });
     if (!existing) return null;
@@ -236,6 +245,7 @@ export async function updateListing(id: string, patch: any) {
 }
 
 export async function deleteListingById(id: string) {
+  requirePersistentStorage();
   return withDb(async () => { await prisma.marketplaceListing.delete({ where: { id } }); return true; }, async () => { const rows = await readJsonArray(listingsFile); await writeJsonArray(listingsFile, rows.filter((r:any)=>r.id!==id)); return true; });
 }
 
@@ -259,6 +269,7 @@ export async function findUser(key: string) {
 }
 
 export async function createUserRegistration(user: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const existing = await prisma.userRegistration.findFirst({ where: { OR: [{primaryMobile:user.primaryMobile||'__none__'}, {email:user.email||'__none__'}, {gstNumber:user.gstNumber||'__none__'}] }});
     if (existing) return { duplicate: withUserRawFields(fromDbDates(existing)) };
@@ -312,6 +323,7 @@ export async function createUserRegistration(user: any) {
 }
 
 export async function updateUserRegistrationRecord(id: string, patch: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const existing = await prisma.userRegistration.findUnique({ where: { id } });
     if (!existing) return null;
@@ -340,6 +352,7 @@ export async function updateUserRegistrationRecord(id: string, patch: any) {
 }
 
 export async function updateUserRegistrationStatus(id: string, status: string, reason?: string) {
+  requirePersistentStorage();
   return withDb(async () => {
     const row = await prisma.userRegistration.update({ where: { id }, data: clean({ status, rejectionReason: reason, updatedAt: new Date() }) });
     await logAdminAction('system', `USER_${status}`, 'UserRegistration', id, reason);
@@ -355,6 +368,7 @@ export async function listPriceLocks() {
 }
 
 export async function createPriceLock(row: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const created = await prisma.priceLock.create({ data: clean({
       id: row.id,
@@ -435,6 +449,7 @@ export async function findPriceLock(id: string) {
 }
 
 export async function updatePriceLock(id: string, patch: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const row = await prisma.priceLock.update({ where: { id }, data: clean({ ...patch, paidAt: patch.paidAt ? new Date(patch.paidAt) : undefined, updatedAt: new Date(), raw: patch.raw || patch }) });
     return fromDbDates(row);
@@ -458,6 +473,7 @@ export async function findInvoice(id: string) {
 }
 
 export async function createInvoice(row: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const created = await prisma.invoice.create({ data: clean({
       id: row.id,
@@ -506,6 +522,7 @@ export async function listPayments() {
 }
 
 export async function createPayment(row: any) {
+  requirePersistentStorage();
   const normalized = {
     id: row.id || `PAY-${Date.now()}`,
     createdAt: row.createdAt || new Date().toISOString(),
@@ -552,6 +569,7 @@ export async function listAdminPayouts() {
 }
 
 export async function createAdminPayout(row: any) {
+  requirePersistentStorage();
   const amount = Number(row.amount || 0);
   const gstAmount = Number(row.gstAmount || 0);
   const tdsAmount = Number(row.tdsAmount || 0);
@@ -599,6 +617,7 @@ export async function createAdminPayout(row: any) {
 }
 
 export async function updateAdminPayout(id: string, patch: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const row = await prisma.adminPayout.update({ where: { id }, data: clean({ ...patch, updatedAt: new Date(), paidAt: patch.paidAt ? new Date(patch.paidAt) : undefined, raw: patch.raw || patch }) });
     return fromDbDates(row);
@@ -617,6 +636,7 @@ export async function listCrmLeads() {
 }
 
 export async function createCrmLead(row: any) {
+  requirePersistentStorage();
   return withDb(async () => {
     const created = await prisma.crmLead.create({ data: clean({
       id: row.id,
@@ -660,11 +680,14 @@ export async function listLogisticsProviders() {
   });
 }
 export async function createLogisticsProvider(row: any) {
+  requirePersistentStorage();
   return withDb(async () => { const created = await prisma.logisticsProvider.create({ data: clean({ id: row.id, createdAt: new Date(row.createdAt || Date.now()), status: row.status || 'PENDING_CONTRACT', companyName: row.companyName, contactName: row.contactName, phone: row.phone, email: row.email, website: row.website, gstNumber: row.gstNumber, panNumber: row.panNumber, address: row.address, country: row.country || 'India', state: row.state, city: row.city, nearbyCities: row.nearbyCities || [], serviceableCountries: row.serviceableCountries || ['India'], serviceableStates: row.serviceableStates || [], serviceableCities: row.serviceableCities || [], serviceTypes: row.serviceTypes || [], specializations: row.specializations || [], deliveryType: row.deliveryType, speed: row.speed, capacityMt: Number(row.capacityMt || 0), fleetSize: Number(row.fleetSize || 0), availabilityDates: row.availabilityDates || [], unavailableDates: row.unavailableDates || [], baseRate: Number(row.baseRate || 0), ratePerKm: Number(row.ratePerKm || 0), ratePerMt: Number(row.ratePerMt || 0), minimumCharge: Number(row.minimumCharge || 0), loadingCharge: Number(row.loadingCharge || 0), insurancePercent: Number(row.insurancePercent || 0), fuelSurchargePercent: Number(row.fuelSurchargePercent || 0), gstPercent: Number(row.gstPercent || 0.18), contractStatus: row.contractStatus || 'NOT_SENT', contractNotes: row.contractNotes, paymentResponsibilityDefault: row.paymentResponsibilityDefault || 'BUYER', adminNotes: row.adminNotes, adminPricingLocked: row.adminPricingLocked !== false, raw: row })}); return fromDbDates(created); }, async () => { const rows = await readJsonArray(logisticsProvidersFile); rows.unshift(row); await writeJsonArray(logisticsProvidersFile, rows); return row; });
 }
 export async function updateLogisticsProvider(id: string, patch: any) {
+  requirePersistentStorage();
   return withDb(async () => { const row = await prisma.logisticsProvider.update({ where: { id }, data: clean({ ...patch, updatedAt: new Date(), raw: patch }) }); return fromDbDates(row); }, async () => { const rows = await readJsonArray(logisticsProvidersFile); const idx = rows.findIndex((r:any)=>r.id===id); if (idx < 0) return null; rows[idx] = {...rows[idx], ...patch, updatedAt: new Date().toISOString()}; await writeJsonArray(logisticsProvidersFile, rows); return rows[idx]; });
 }
 export async function deleteLogisticsProvider(id: string) {
+  requirePersistentStorage();
   return withDb(async () => { await prisma.logisticsProvider.delete({ where: { id } }); return true; }, async () => { const rows = await readJsonArray(logisticsProvidersFile); await writeJsonArray(logisticsProvidersFile, rows.filter((r:any)=>r.id!==id)); return true; });
 }

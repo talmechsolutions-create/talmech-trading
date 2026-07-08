@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientSessionUser } from '@/lib/clientAuth';
 import { listListings } from '@/lib/proDb';
+import { publicStorageError } from '@/lib/storageMode';
 import { createWorkspaceListing } from '@/lib/workspaceListings';
 import { sanitizeString } from '@/lib/validation';
 
@@ -25,21 +26,27 @@ export async function POST(req: NextRequest) {
   if (!sanitizeString(body.metal, 80) || !sanitizeString(body.product, 140)) {
     return NextResponse.json({ ok: false, error: 'Metal and product are required.' }, { status: 400 });
   }
-  const listing = await createWorkspaceListing({
-    ...body,
-    accountId: user.id,
-    ownerUserId: user.id,
-    ownerEmail: user.email,
-    ownerMobile: user.primaryMobile,
-    firmName: user.firmName,
-    contactPerson: user.ownerName,
-    listingVisibility: 'draft',
-  }, {
-    owner: user,
-    source: 'client-workspace',
-    createdByAdmin: false,
-    approved: false,
-    prefix: 'LIST-CL',
-  });
-  return NextResponse.json({ ok: true, listing });
+  try {
+    const listing = await createWorkspaceListing({
+      ...body,
+      accountId: user.id,
+      ownerUserId: user.id,
+      ownerEmail: user.email,
+      ownerMobile: user.primaryMobile,
+      firmName: user.firmName,
+      contactPerson: user.ownerName,
+      listingVisibility: 'draft',
+    }, {
+      owner: user,
+      source: 'client-workspace',
+      createdByAdmin: false,
+      approved: false,
+      prefix: 'LIST-CL',
+    });
+    return NextResponse.json({ ok: true, listing });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to create listing.' }, { status: 500 });
+  }
 }

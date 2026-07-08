@@ -7,6 +7,7 @@ import {
   updatePriceLock,
 } from '@/lib/proDb';
 import { sendOrQueueEmail } from '@/lib/email';
+import { publicStorageError } from '@/lib/storageMode';
 import {
   formatInr,
   commissionLabel,
@@ -418,14 +419,13 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error('RAZORPAY VERIFY ROUTE ERROR:', error);
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
 
     return NextResponse.json(
       {
         ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Unable to verify Razorpay payment.',
+        error: 'Unable to verify Razorpay payment.',
       },
       { status: 500 }
     );

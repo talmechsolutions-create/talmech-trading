@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientSessionUser } from '@/lib/clientAuth';
+import { publicStorageError } from '@/lib/storageMode';
 import { listSupportTicketsForUser, updateSupportTicket } from '@/lib/supportTicketStore';
 import { sanitizeMultiline } from '@/lib/validation';
 
@@ -15,6 +16,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { ticketId: 
   const body = await req.json().catch(() => ({}));
   const reply = sanitizeMultiline(body.reply || body.message, 1200);
   if (!reply) return NextResponse.json({ ok: false, error: 'Reply message is required.' }, { status: 400 });
-  const ticket = await updateSupportTicket(params.ticketId, { reply, by: 'client', status: 'Waiting for Client' });
-  return NextResponse.json({ ok: true, ticket });
+  try {
+    const ticket = await updateSupportTicket(params.ticketId, { reply, by: 'client', status: 'Waiting for Client' });
+    return NextResponse.json({ ok: true, ticket });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to update support ticket.' }, { status: 500 });
+  }
 }

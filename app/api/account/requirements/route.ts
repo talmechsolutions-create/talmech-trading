@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientSessionUser } from '@/lib/clientAuth';
 import { createLead, listLeads } from '@/lib/proDb';
+import { publicStorageError } from '@/lib/storageMode';
 import { isValidIndianMobile, normalizeEmail, normalizeIndianMobile, normalizePincode, sanitizeMultiline, sanitizeString } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,12 @@ export async function POST(req: NextRequest) {
       productForm: sanitizeString(body.productForm, 120),
     },
   };
-  const requirement = await createLead(lead);
-  return NextResponse.json({ ok: true, requirement });
+  try {
+    const requirement = await createLead(lead);
+    return NextResponse.json({ ok: true, requirement });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to post requirement.' }, { status: 500 });
+  }
 }

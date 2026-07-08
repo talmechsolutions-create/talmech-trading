@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/adminSecurity';
 import { createAdminAssistedAccount } from '@/lib/adminAssistedAccounts';
+import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,12 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const result = await createAdminAssistedAccount(params.submissionId, body);
-  return NextResponse.json(result, { status: result.ok ? 200 : result.status || 400 });
+  try {
+    const result = await createAdminAssistedAccount(params.submissionId, body);
+    return NextResponse.json(result, { status: result.ok ? 200 : result.status || 400 });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to create account.' }, { status: 500 });
+  }
 }

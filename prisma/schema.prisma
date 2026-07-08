@@ -346,6 +346,68 @@ model AdminAction {
   raw       Json?
 }
 
+model SupportTicket {
+  id          String   @id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  ownerUserId String?
+  accountId   String?
+  firmName    String?
+  contactName String?
+  email       String?
+  mobile      String?
+  category    String?
+  priority    String?
+  subject     String?
+  status      String   @default("Open")
+  raw         Json?
+
+  @@index([ownerUserId])
+  @@index([accountId])
+  @@index([status])
+  @@index([email])
+}
+
+model WhatsappUpload {
+  id             String   @id
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  status         String   @default("Pending Review")
+  role           String?
+  submissionType String?
+  firmName       String?
+  fullName       String?
+  mobile         String?
+  email          String?
+  city           String?
+  state          String?
+  accountId      String?
+  listingId      String?
+  raw            Json?
+
+  @@index([status])
+  @@index([mobile])
+  @@index([email])
+  @@index([accountId])
+  @@index([listingId])
+}
+
+model AccountActivationToken {
+  id        String   @id
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  accountId String
+  tokenHash String
+  status    String   @default("pending")
+  expiresAt DateTime
+  usedAt    DateTime?
+  raw       Json?
+
+  @@index([accountId])
+  @@index([tokenHash])
+  @@index([status])
+}
+
 
 model LogisticsProvider {
   id                  String   @id

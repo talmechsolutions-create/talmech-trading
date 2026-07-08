@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CUSTOM_OPTION } from '@/data/whatsappUploadOptions';
 import { createWhatsappUpload, listWhatsappUploads, toWhatsappUploadAdminRow } from '@/lib/whatsappUploadStore';
+import { getStorageMode, publicStorageError } from '@/lib/storageMode';
 import {
   WHATSAPP_ROLE_OPTIONS,
   WHATSAPP_SUBMISSION_TYPE_OPTIONS,
@@ -81,7 +82,7 @@ export async function GET() {
     submissions,
     rows: submissions.map(toWhatsappUploadAdminRow),
     updatedAt: new Date().toISOString(),
-    storage: 'json-fallback',
+    storage: getStorageMode(),
   });
 }
 
@@ -94,12 +95,18 @@ export async function POST(req: NextRequest) {
   const { issues, finalLabels } = validateSubmission(body);
   if (issues.length) return NextResponse.json({ ok: false, error: issues[0].message, issues }, { status: 400 });
 
-  const submission = await createWhatsappUpload({
-    ...body,
-    ...finalLabels,
-    mobile: normalizeIndianMobile(body.mobile),
-    alternateMobile: body.alternateMobile ? normalizeIndianMobile(body.alternateMobile) : '',
-  });
+  try {
+    const submission = await createWhatsappUpload({
+      ...body,
+      ...finalLabels,
+      mobile: normalizeIndianMobile(body.mobile),
+      alternateMobile: body.alternateMobile ? normalizeIndianMobile(body.alternateMobile) : '',
+    });
 
-  return NextResponse.json({ ok: true, submission, status: submission.status });
+    return NextResponse.json({ ok: true, submission, status: submission.status });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to save WhatsApp upload.' }, { status: 500 });
+  }
 }

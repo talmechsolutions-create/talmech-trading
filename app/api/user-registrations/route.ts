@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { csv } from '@/lib/marketplaceStore';
 import { createUserRegistration, findUser, listUsers, updateUserRegistrationStatus } from '@/lib/proDb';
+import { getStorageMode, publicStorageError } from '@/lib/storageMode';
 import {
   collectMissing,
   isValidEmail,
@@ -96,7 +97,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ users, updatedAt: new Date().toISOString(), storage: process.env.DATABASE_URL ? 'database' : 'json-fallback' });
+  return NextResponse.json({ users, updatedAt: new Date().toISOString(), storage: getStorageMode() });
 }
 
 export async function POST(req: NextRequest) {
@@ -208,9 +209,16 @@ export async function POST(req: NextRequest) {
       : sanitizeString(body.subscriptionPlan || 'Not required', 120),
   };
 
-  const saved = await createUserRegistration(user);
-  if (saved.duplicate) {
-    return NextResponse.json({ ok: false, error: 'A registration already exists for this mobile, email or GST number.', user: publicUserSummary(saved.duplicate) }, { status: 409 });
+  let saved;
+  try {
+    saved = await createUserRegistration(user);
+    if (saved.duplicate) {
+      return NextResponse.json({ ok: false, error: 'A registration already exists for this mobile, email or GST number.', user: publicUserSummary(saved.duplicate) }, { status: 409 });
+    }
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to save registration.' }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true, user: publicUserSummary(saved.user) });
@@ -222,7 +230,13 @@ export async function PATCH(req: NextRequest) {
   const status = sanitizeString(body.status, 80);
   const reason = sanitizeMultiline(body.reason, 500);
   if (!id || !status) return NextResponse.json({ ok: false, error: 'Missing user id or status.' }, { status: 400 });
-  const updated = await updateUserRegistrationStatus(id, status, reason);
-  if (!updated) return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
-  return NextResponse.json({ ok: true, user: updated });
+  try {
+    const updated = await updateUserRegistrationStatus(id, status, reason);
+    if (!updated) return NextResponse.json({ ok: false, error: 'User not found' }, { status: 404 });
+    return NextResponse.json({ ok: true, user: updated });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    return NextResponse.json({ ok: false, error: 'Unable to update registration.' }, { status: 500 });
+  }
 }

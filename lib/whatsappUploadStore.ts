@@ -1,6 +1,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { prisma, useDatabase } from '@/lib/proDb';
+import { canUseJsonFileStorage, isProduction, persistentStorageUnavailable, requireJsonFileStorage, requirePersistentStorage } from '@/lib/storageMode';
 import {
   WhatsappAccountCreation,
   WhatsappListingCreation,
@@ -27,6 +29,7 @@ function createSubmissionId() {
 }
 
 async function readJsonArray<T>(file: string): Promise<T[]> {
+  if (!canUseJsonFileStorage()) return [];
   try {
     const raw = (await fs.readFile(file, 'utf8')).replace(/^\uFEFF/, '');
     const parsed = JSON.parse(raw);
@@ -39,6 +42,7 @@ async function readJsonArray<T>(file: string): Promise<T[]> {
 }
 
 async function writeJsonArray<T>(file: string, rows: T[]) {
+  requireJsonFileStorage();
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, `${JSON.stringify(rows, null, 2)}\n`, 'utf8');
 }
@@ -162,9 +166,68 @@ function normalizeSubmission(row: Partial<WhatsappUploadSubmission>): WhatsappUp
   };
 }
 
+function dateString(value: unknown) {
+  if (value instanceof Date) return value.toISOString();
+  return sanitizeString(value, 40);
+}
+
+function fromDbSubmission(row: any): WhatsappUploadSubmission {
+  return normalizeSubmission({
+    ...(row?.raw && typeof row.raw === 'object' ? row.raw : {}),
+    submissionId: row?.id,
+    createdAt: dateString(row?.createdAt),
+    updatedAt: dateString(row?.updatedAt),
+    status: row?.status,
+    role: row?.role,
+    submissionType: row?.submissionType,
+    firmName: row?.firmName,
+    fullName: row?.fullName,
+    mobile: row?.mobile,
+    email: row?.email,
+    city: row?.city,
+    state: row?.state,
+  });
+}
+
+function dbUploadData(submission: WhatsappUploadSubmission) {
+  return {
+    id: submission.submissionId,
+    createdAt: new Date(submission.createdAt),
+    updatedAt: new Date(submission.updatedAt),
+    status: submission.status,
+    role: submission.role,
+    submissionType: submission.submissionType,
+    firmName: submission.firmName,
+    fullName: submission.fullName,
+    mobile: submission.mobile,
+    email: submission.email,
+    city: submission.city,
+    state: submission.state,
+    accountId: submission.accountCreation?.accountId || '',
+    listingId: submission.listingCreation?.lastListingId || submission.listingCreation?.listingIds?.[0] || '',
+    raw: submission,
+  };
+}
+
+async function withUploadDb<T>(fn: () => Promise<T>, fallback: () => Promise<T>) {
+  if (!useDatabase()) return fallback();
+  try {
+    return await fn();
+  } catch (error) {
+    console.error('[WhatsApp upload DB error]', error);
+    if (isProduction()) throw persistentStorageUnavailable();
+    return fallback();
+  }
+}
+
 export async function listWhatsappUploads() {
-  const rows = await readJsonArray<WhatsappUploadSubmission>(whatsappUploadsFile);
-  return rows.map(normalizeSubmission).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return withUploadDb(
+    async () => (await prisma.whatsappUpload.findMany({ orderBy: { createdAt: 'desc' } })).map(fromDbSubmission),
+    async () => {
+      const rows = await readJsonArray<WhatsappUploadSubmission>(whatsappUploadsFile);
+      return rows.map(normalizeSubmission).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    }
+  );
 }
 
 export async function findWhatsappUpload(submissionId: string) {
@@ -174,6 +237,7 @@ export async function findWhatsappUpload(submissionId: string) {
 }
 
 export async function createWhatsappUpload(input: Partial<WhatsappUploadInput>) {
+  requirePersistentStorage();
   const now = new Date().toISOString();
   const submission = normalizeSubmission({
     ...cleanInput(input),
@@ -185,13 +249,19 @@ export async function createWhatsappUpload(input: Partial<WhatsappUploadInput>) 
     statusTimeline: [{ status: 'Pending Review', note: 'Saved for admin-assisted review. No auto-publishing.', at: now, by: 'system' }],
   });
 
-  const rows = await listWhatsappUploads();
-  rows.unshift(submission);
-  await writeJsonArray(whatsappUploadsFile, rows);
-  return submission;
+  return withUploadDb(
+    async () => fromDbSubmission(await prisma.whatsappUpload.create({ data: dbUploadData(submission) })),
+    async () => {
+      const rows = await listWhatsappUploads();
+      rows.unshift(submission);
+      await writeJsonArray(whatsappUploadsFile, rows);
+      return submission;
+    }
+  );
 }
 
 export async function updateWhatsappUpload(submissionId: string, patch: WhatsappUploadAdminPatch) {
+  requirePersistentStorage();
   const cleanId = sanitizeString(submissionId, 80);
   const rows = await listWhatsappUploads();
   const index = rows.findIndex((row) => row.submissionId === cleanId);
@@ -214,8 +284,14 @@ export async function updateWhatsappUpload(submissionId: string, patch: Whatsapp
     statusTimeline: timeline,
   });
 
-  await writeJsonArray(whatsappUploadsFile, rows);
-  return rows[index];
+  const updated = rows[index];
+  return withUploadDb(
+    async () => fromDbSubmission(await prisma.whatsappUpload.update({ where: { id: cleanId }, data: dbUploadData(updated) })),
+    async () => {
+      await writeJsonArray(whatsappUploadsFile, rows);
+      return updated;
+    }
+  );
 }
 
 export async function updateWhatsappUploadAccountCreation(
@@ -223,6 +299,7 @@ export async function updateWhatsappUploadAccountCreation(
   accountCreation: WhatsappAccountCreation,
   options: { note?: string; status?: WhatsappUploadStatus } = {}
 ) {
+  requirePersistentStorage();
   const cleanId = sanitizeString(submissionId, 80);
   const rows = await listWhatsappUploads();
   const index = rows.findIndex((row) => row.submissionId === cleanId);
@@ -245,8 +322,14 @@ export async function updateWhatsappUploadAccountCreation(
     accountCreation: normalizeAccountCreation(accountCreation),
   });
 
-  await writeJsonArray(whatsappUploadsFile, rows);
-  return rows[index];
+  const updated = rows[index];
+  return withUploadDb(
+    async () => fromDbSubmission(await prisma.whatsappUpload.update({ where: { id: cleanId }, data: dbUploadData(updated) })),
+    async () => {
+      await writeJsonArray(whatsappUploadsFile, rows);
+      return updated;
+    }
+  );
 }
 
 export async function updateWhatsappUploadListingCreation(
@@ -254,6 +337,7 @@ export async function updateWhatsappUploadListingCreation(
   listingCreation: WhatsappListingCreation,
   options: { note?: string; status?: WhatsappUploadStatus } = {}
 ) {
+  requirePersistentStorage();
   const cleanId = sanitizeString(submissionId, 80);
   const rows = await listWhatsappUploads();
   const index = rows.findIndex((row) => row.submissionId === cleanId);
@@ -276,8 +360,14 @@ export async function updateWhatsappUploadListingCreation(
     listingCreation: normalizeListingCreation(listingCreation),
   });
 
-  await writeJsonArray(whatsappUploadsFile, rows);
-  return rows[index];
+  const updated = rows[index];
+  return withUploadDb(
+    async () => fromDbSubmission(await prisma.whatsappUpload.update({ where: { id: cleanId }, data: dbUploadData(updated) })),
+    async () => {
+      await writeJsonArray(whatsappUploadsFile, rows);
+      return updated;
+    }
+  );
 }
 
 export function toWhatsappUploadAdminRow(row: WhatsappUploadSubmission) {
