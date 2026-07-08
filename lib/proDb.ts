@@ -1,8 +1,14 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
+import { getDatabaseUrl, hasDatabaseUrl } from '@/lib/databaseEnv';
 import { leadsFile, listingsFile, readJsonArray, writeJsonArray } from '@/lib/marketplaceStore';
 import { isProduction, persistentStorageUnavailable, requirePersistentStorage } from '@/lib/storageMode';
+
+const configuredDatabaseUrl = getDatabaseUrl();
+if (configuredDatabaseUrl && !(process.env.DATABASE_POSTGRES_URL || '').trim()) {
+  process.env.DATABASE_POSTGRES_URL = configuredDatabaseUrl;
+}
 
 const g = globalThis as unknown as { prisma?: PrismaClient };
 export const prisma = g.prisma || new PrismaClient();
@@ -21,11 +27,11 @@ const paymentsFile = path.join(dataDir, 'payments.json');
 const payoutsFile = path.join(dataDir, 'admin-payouts.json');
 const logisticsProvidersFile = path.join(dataDir, 'logistics-providers.json');
 
-export const useDatabase = () => Boolean((process.env.DATABASE_URL || '').trim());
+export const useDatabase = hasDatabaseUrl;
 
 /*
   Production readiness:
-  - DATABASE_URL should be configured for deployed environments.
+  - DATABASE_POSTGRES_URL, DATABASE_URL, or DATABASE_PRISMA_DATABASE_URL should be configured for deployed environments.
   - The JSON files in /data are local development fallbacks only and are ignored by git.
   - Keep writes funneled through these helpers so Prisma and JSON fallback behavior stay aligned.
 */

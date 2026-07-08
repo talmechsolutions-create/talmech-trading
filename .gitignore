@@ -30,3 +30,9 @@ public/videos/*.mp4
 TMIS_Talmech_Manufacturing_Intelligence_System_Starter/
 .agents/
 .codex/
+
+.vercel
+.env*
+!.env.example
+
+.env*

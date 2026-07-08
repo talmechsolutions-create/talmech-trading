@@ -1,8 +1,12 @@
+import { hasDatabaseUrl } from '@/lib/databaseEnv';
+
+export { hasDatabaseUrl } from '@/lib/databaseEnv';
+
 export const PRODUCTION_DATABASE_REQUIRED_MESSAGE =
-  'Production database is not configured. Please configure DATABASE_URL before creating accounts/listings.';
+  'Production database is not configured. Please configure DATABASE_POSTGRES_URL or DATABASE_URL before creating accounts/listings.';
 
 export const PRODUCTION_DATABASE_UNAVAILABLE_MESSAGE =
-  'Production database is not available. Please check DATABASE_URL and Prisma setup before saving business data.';
+  'Production database is not available. Please check DATABASE_POSTGRES_URL, DATABASE_URL, and Prisma setup before saving business data.';
 
 export type StorageMode = 'database' | 'json-local' | 'blocked';
 
@@ -24,10 +28,6 @@ export function isProduction() {
 
 export function isVercel() {
   return Boolean(process.env.VERCEL || process.env.VERCEL_ENV || process.env.NEXT_PUBLIC_VERCEL_ENV);
-}
-
-export function hasDatabaseUrl() {
-  return Boolean((process.env.DATABASE_URL || '').trim());
 }
 
 export function canUseJsonFileStorage() {
