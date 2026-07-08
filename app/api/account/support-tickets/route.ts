@@ -21,6 +21,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Subject and message are required.' }, { status: 400 });
   }
   try {
+    const attachmentNote = sanitizeMultiline(body.attachmentNote, 600);
+    const message = [
+      sanitizeMultiline(body.message, 2000),
+      attachmentNote ? `Attachment note: ${attachmentNote}` : '',
+    ].filter(Boolean).join('\n\n');
     const ticket = await createSupportTicket({
       ownerUserId: user.id,
       accountId: user.id,
@@ -31,7 +36,7 @@ export async function POST(req: NextRequest) {
       category: sanitizeString(body.category || 'General support', 80),
       priority: sanitizeString(body.priority || 'Normal', 40),
       subject: sanitizeString(body.subject, 160),
-      message: sanitizeMultiline(body.message, 2000),
+      message,
     });
     return NextResponse.json({ ok: true, ticket });
   } catch (error) {

@@ -69,6 +69,9 @@ export type WhatsappAccountCreation = {
   emailLastAttemptAt?: string;
   emailStatus?: string;
   emailProvider?: string;
+  emailRecipient?: string;
+  notificationType?: string;
+  clientFollowUpRequired?: boolean;
   emailPreviewAvailable?: boolean;
   lastEmailError?: string;
   adminNote?: string;

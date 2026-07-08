@@ -14,31 +14,37 @@ function scoreClass(score: number) {
 
 function StrategyBlock({ strategy }: { strategy: ListingStrategy }) {
   return (
-    <article className="card listingStrategyCard">
-      <div className="sectionHead compactHead">
+    <article className="listingStrategyCard">
+      <div className="strategyCardHead">
         <div>
           <span className={scoreClass(strategy.qualityScore)}>Quality {strategy.qualityScore}</span>
           <h3>{strategy.strategyTitle}</h3>
-          <p className="muted">{strategy.recommendedPitch}</p>
         </div>
         <Link className="btn secondary" href={`/admin/listings/${strategy.listingId}`}>Open listing</Link>
       </div>
-      <div className="grid cards3">
-        <div>
+      <div className="strategySummaryCard">
+        <b>Strategy summary</b>
+        <p>{strategy.recommendedPitch}</p>
+      </div>
+      <div className="strategyFacetGrid">
+        <div className="strategyFacetCard">
           <b>Target buyer profiles</b>
           {strategy.targetBuyerProfiles.map((item) => <p key={item}>{item}</p>)}
         </div>
-        <div>
+        <div className="strategyFacetCard">
           <b>Target industries</b>
           {strategy.targetIndustries.map((item) => <p key={item}>{item}</p>)}
         </div>
-        <div>
+        <div className="strategyFacetCard">
           <b>Suggested admin actions</b>
           {strategy.suggestedAdminActions.map((item) => <p key={item}>{item}</p>)}
         </div>
       </div>
       {strategy.missingDataWarnings.length > 0 && (
-        <p className="notice slimNotice">{strategy.missingDataWarnings.join(' ')}</p>
+        <div className="strategyWarningList">
+          <b>Warnings</b>
+          {strategy.missingDataWarnings.map((warning) => <span key={warning}>{warning}</span>)}
+        </div>
       )}
     </article>
   );

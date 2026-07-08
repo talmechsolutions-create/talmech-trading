@@ -39,6 +39,7 @@ type AccountEmailOptions = {
   submission: WhatsappUploadSubmission;
   activationUrl?: string;
   alreadyActivated?: boolean;
+  temporaryPassword?: string;
 };
 
 const activationTtlMs = 7 * 24 * 60 * 60 * 1000;
@@ -134,6 +135,10 @@ function createActivationToken() {
   return { token, hash: hashToken(token), expiresAt: new Date(Date.now() + activationTtlMs).toISOString() };
 }
 
+function temporaryPassword() {
+  return `${randomBytes(9).toString('base64url')}T7!`;
+}
+
 function activationUrl(token: string) {
   return `${appBaseUrl()}/activate-account?token=${encodeURIComponent(token)}`;
 }
@@ -186,7 +191,7 @@ async function findDuplicateAccount(email: string, mobile: string) {
   }) || null;
 }
 
-function accountEmailHtml({ user, submission, activationUrl: activateUrl, alreadyActivated }: AccountEmailOptions) {
+function accountEmailHtml({ user, submission, activationUrl: activateUrl, alreadyActivated, temporaryPassword }: AccountEmailOptions) {
   const loginUrl = `${appBaseUrl()}/signin`;
   const rows = [
     ['Account type', user.accountType],
@@ -195,9 +200,12 @@ function accountEmailHtml({ user, submission, activationUrl: activateUrl, alread
     ['Registered email', user.email],
     ['WhatsApp submission', submission.submissionId],
     ['Login URL', loginUrl],
+    ['Temporary password', temporaryPassword || 'Use your existing password or request a fresh admin resend.'],
   ];
 
-  const activationBlock = activateUrl
+  const activationBlock = temporaryPassword
+    ? '<p><b>Security:</b> Sign in with the temporary password above and change it after first login. Email/mobile OTP is disabled only for this admin-created account setup.</p>'
+    : activateUrl
     ? `<p><b>Activate account:</b> <a href="${escapeHtml(activateUrl)}">${escapeHtml(activateUrl)}</a></p>
        <p>This link lets you set your password. Email OTP is not required for this admin-created setup.</p>`
     : alreadyActivated
@@ -224,6 +232,13 @@ async function sendAccountEmail(options: AccountEmailOptions) {
     to: options.user.email,
     subject: 'Your Talmech Trading account has been created',
     html: accountEmailHtml(options),
+    text: [
+      'Your Talmech Trading account has been created.',
+      `Login URL: ${appBaseUrl()}/signin`,
+      `Username/User ID: ${options.user.email || options.user.primaryMobile || options.user.id}`,
+      options.temporaryPassword ? `Temporary password: ${options.temporaryPassword}` : '',
+      'Change your password after first login.',
+    ].filter(Boolean).join('\n'),
     leadId: options.submission.submissionId,
   });
 }
@@ -237,7 +252,8 @@ function accountCreationFromEmail(
   user: any,
   emailResult: any,
   activation: { expiresAt?: string; status?: 'pending' | 'activated' },
-  adminNote?: string
+  adminNote?: string,
+  notification: { type?: string; recipient?: string; clientFollowUpRequired?: boolean } = {}
 ): WhatsappAccountCreation {
   const now = new Date().toISOString();
   const emailStatus = sanitizeString(emailResult?.status, 80) || 'skipped';
@@ -259,10 +275,32 @@ function accountCreationFromEmail(
     emailLastAttemptAt: now,
     emailStatus,
     emailProvider: sanitizeString(emailResult?.provider, 80),
+    emailRecipient: sanitizeString(notification.recipient || user.email, 254).toLowerCase(),
+    notificationType: sanitizeString(notification.type || 'client_account_created', 80),
+    clientFollowUpRequired: notification.clientFollowUpRequired === undefined ? existing?.clientFollowUpRequired : Boolean(notification.clientFollowUpRequired),
     emailPreviewAvailable: emailNeedsManualCopy(emailResult),
     lastEmailError: sanitizeMultiline(JSON.stringify(emailResult?.data || emailResult?.providerError || ''), 500),
     adminNote: sanitizeMultiline(adminNote || existing?.adminNote, 800),
   };
+}
+
+function accountManualInstructions(user: any, submission: WhatsappUploadSubmission, tempPassword?: string) {
+  return [
+    `Hello ${user.ownerName || user.firmName || 'there'},`,
+    '',
+    'Your Talmech Trading account has been created by the Talmech admin team from the details shared through WhatsApp.',
+    `Company: ${user.firmName || '-'}`,
+    `Login URL: ${appBaseUrl()}/signin`,
+    `Username/User ID: ${user.email || user.primaryMobile || user.id}`,
+    tempPassword ? `Temporary password: ${tempPassword}` : 'Password: use your current password or request a fresh Talmech admin resend.',
+    `WhatsApp submission: ${submission.submissionId}`,
+    '',
+    'Please sign in, change the temporary password after first login, review your business details, and share 3 clear product images if your listing is missing photos.',
+    'Reply to Talmech support if any product, GST, certificate, price, stock, or dispatch information needs correction.',
+    '',
+    'Regards,',
+    'Talmech Trading Team',
+  ].join('\n');
 }
 
 export async function createAdminAssistedAccount(submissionId: string, input: AdminAccountInput) {
@@ -281,7 +319,8 @@ export async function createAdminAssistedAccount(submissionId: string, input: Ad
     return { ok: false, status: 409, error: 'A user already exists for this email or mobile number.', duplicate: safeAccount(duplicate) };
   }
 
-  const activation = createActivationToken();
+  const tempPassword = temporaryPassword();
+  const password = hashAdminAssistedPassword(tempPassword);
   const now = new Date().toISOString();
   const user = {
     id: accountId(),
@@ -329,16 +368,15 @@ export async function createAdminAssistedAccount(submissionId: string, input: Ad
     verificationStatus: 'Pending Profile Confirmation',
     emailOtpRequired: false,
     mobileOtpRequired: false,
-    mustChangePassword: false,
+    mustChangePassword: true,
     profileConfirmationRequired: true,
     accountCreatedAt: now,
     credentialsSentAt: '',
-    activationStatus: 'pending',
-    activationTokenHash: activation.hash,
-    activationTokenExpiresAt: activation.expiresAt,
-    passwordHash: '',
-    passwordSalt: '',
-    passwordKdf: '',
+    activationStatus: 'activated',
+    activationTokenHash: '',
+    activationTokenExpiresAt: '',
+    ...password,
+    temporaryPasswordIssuedAt: now,
     adminAssistedNote: cleaned.adminNote,
   };
 
@@ -347,14 +385,14 @@ export async function createAdminAssistedAccount(submissionId: string, input: Ad
     return { ok: false, status: 409, error: 'A registration already exists for this mobile, email or GST number.', duplicate: safeAccount(saved.duplicate) };
   }
 
-  const activateUrl = activationUrl(activation.token);
-  const emailResult = await sendAccountEmail({ user, submission, activationUrl: activateUrl });
+  const emailResult = await sendAccountEmail({ user, submission, temporaryPassword: tempPassword });
   const accountCreation = accountCreationFromEmail(
     { status: 'Account Created' },
     user,
     emailResult,
-    { expiresAt: activation.expiresAt, status: 'pending' },
-    cleaned.adminNote
+    { status: 'activated' },
+    cleaned.adminNote,
+    { type: 'client_account_created', recipient: user.email, clientFollowUpRequired: true }
   );
   const updatedSubmission = await updateWhatsappUploadAccountCreation(submission.submissionId, accountCreation, {
     status: 'Converted',
@@ -364,6 +402,10 @@ export async function createAdminAssistedAccount(submissionId: string, input: Ad
   await updateUserRegistrationRecord(user.id, {
     credentialsSentAt: accountCreation.credentialsSentAt,
     emailDeliveryStatus: accountCreation.emailStatus,
+    emailProvider: accountCreation.emailProvider,
+    clientNotificationLastSentAt: accountCreation.credentialsSentAt,
+    clientNotificationStatus: accountCreation.emailStatus,
+    clientNotificationRecipient: user.email,
   });
 
   return {
@@ -371,7 +413,10 @@ export async function createAdminAssistedAccount(submissionId: string, input: Ad
     user: safeAccount(user),
     submission: updatedSubmission,
     email: emailResult,
-    manualActivationUrl: emailNeedsManualCopy(emailResult) ? activateUrl : undefined,
+    manualCopy: emailNeedsManualCopy(emailResult) ? {
+      temporaryPassword: tempPassword,
+      instructions: accountManualInstructions(user, submission, tempPassword),
+    } : undefined,
   };
 }
 
@@ -385,9 +430,23 @@ export async function resendAdminAssistedAccountEmail(submissionId: string) {
   if (!user) return { ok: false, status: 404, error: 'Linked user account was not found.' };
   if (!isValidEmail(user.email)) return { ok: false, status: 400, error: 'Linked user account does not have a valid email.' };
 
-  const activated = user.activationStatus === 'activated' || Boolean(user.passwordHash);
-  const activation = activated ? null : createActivationToken();
-  if (activation) {
+  const shouldIssueTemporaryPassword = Boolean(user.mustChangePassword) || user.activationStatus !== 'activated' || !user.passwordHash;
+  const freshTemporaryPassword = shouldIssueTemporaryPassword ? temporaryPassword() : '';
+  const passwordPatch = freshTemporaryPassword ? hashAdminAssistedPassword(freshTemporaryPassword) : {};
+  const activated = !shouldIssueTemporaryPassword;
+  const activation = freshTemporaryPassword ? null : activated ? null : createActivationToken();
+  if (freshTemporaryPassword) {
+    await updateUserRegistrationRecord(user.id, {
+      ...passwordPatch,
+      activationStatus: 'activated',
+      activationTokenHash: '',
+      activationTokenExpiresAt: '',
+      mustChangePassword: true,
+      temporaryPasswordIssuedAt: new Date().toISOString(),
+      emailOtpRequired: false,
+      mobileOtpRequired: false,
+    });
+  } else if (activation) {
     await updateUserRegistrationRecord(user.id, {
       activationStatus: 'pending',
       activationTokenHash: activation.hash,
@@ -401,13 +460,15 @@ export async function resendAdminAssistedAccountEmail(submissionId: string) {
     submission,
     activationUrl: activateUrl,
     alreadyActivated: activated,
+    temporaryPassword: freshTemporaryPassword,
   });
   const accountCreation = accountCreationFromEmail(
     submission.accountCreation,
     user,
     emailResult,
-    { expiresAt: activation?.expiresAt, status: activated ? 'activated' : 'pending' },
-    submission.accountCreation?.adminNote
+    { expiresAt: activation?.expiresAt, status: freshTemporaryPassword || activated ? 'activated' : 'pending' },
+    submission.accountCreation?.adminNote,
+    { type: 'client_account_resend', recipient: user.email, clientFollowUpRequired: submission.accountCreation?.clientFollowUpRequired }
   );
   const updatedSubmission = await updateWhatsappUploadAccountCreation(submission.submissionId, accountCreation, {
     note: `Admin-assisted account email resent for ${user.id}.`,
@@ -416,6 +477,10 @@ export async function resendAdminAssistedAccountEmail(submissionId: string) {
   await updateUserRegistrationRecord(user.id, {
     credentialsSentAt: accountCreation.credentialsSentAt,
     emailDeliveryStatus: accountCreation.emailStatus,
+    emailProvider: accountCreation.emailProvider,
+    clientNotificationLastSentAt: accountCreation.credentialsSentAt,
+    clientNotificationStatus: accountCreation.emailStatus,
+    clientNotificationRecipient: user.email,
   });
 
   return {
@@ -424,6 +489,10 @@ export async function resendAdminAssistedAccountEmail(submissionId: string) {
     submission: updatedSubmission,
     email: emailResult,
     manualActivationUrl: activateUrl && emailNeedsManualCopy(emailResult) ? activateUrl : undefined,
+    manualCopy: emailNeedsManualCopy(emailResult) ? {
+      temporaryPassword: freshTemporaryPassword,
+      instructions: accountManualInstructions(user, submission, freshTemporaryPassword),
+    } : undefined,
   };
 }
 

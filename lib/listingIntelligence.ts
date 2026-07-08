@@ -1,5 +1,6 @@
 import { findListingStrategyRule } from '@/data/listingStrategyRules';
 import { hasListingImages, productImagesFromListing } from '@/lib/listingImages';
+import { detectMissingInformation } from '@/lib/missingInformation';
 
 export type ListingQualitySignal = {
   field: string;
@@ -130,10 +131,10 @@ function imbalance(rows: any[]) {
 
 function missingSignals(row: any) {
   const signals: ListingQualitySignal[] = [];
-  const images = hasListingImages(row);
+  detectMissingInformation({ listing: row }).forEach((item) => {
+    signals.push({ field: item.key, severity: item.severity, message: item.message });
+  });
   const checks = [
-    ['quantity', row.quantity || value(row, 'quantity'), 'Quantity is missing.'],
-    ['price', row.targetPrice || row.priceType || value(row, 'price') || value(row, 'targetPrice'), 'Price or target price is missing.'],
     ['grade', row.grade || value(row, 'grade'), 'Grade is missing.'],
     ['region', row.city || row.state || value(row, 'city') || value(row, 'state'), 'City/state is missing.'],
     ['owner', value(row, 'accountId') || value(row, 'ownerUserId'), 'Owner account is not linked.'],
@@ -141,7 +142,6 @@ function missingSignals(row: any) {
   checks.forEach(([field, data, message]) => {
     if (!data) signals.push({ field, severity: field === 'owner' ? 'critical' : 'warning', message });
   });
-  if (!images) signals.push({ field: 'images', severity: 'warning', message: 'Product images are missing.' });
   if (!isActive(row)) signals.push({ field: 'status', severity: 'info', message: 'Listing is inactive, draft, pending, paused or closed.' });
   return signals;
 }

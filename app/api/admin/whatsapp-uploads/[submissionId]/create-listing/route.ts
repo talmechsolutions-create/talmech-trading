@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/adminSecurity';
+import { sendClientListingNotification } from '@/lib/clientNotifications';
 import { findUser } from '@/lib/proDb';
 import { publicStorageError } from '@/lib/storageMode';
 import { findWhatsappUpload, updateWhatsappUploadListingCreation } from '@/lib/whatsappUploadStore';
@@ -76,7 +77,19 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       note: `Marketplace listing ${listing.id} created from WhatsApp submission.`,
     });
 
-    return NextResponse.json({ ok: true, listing, submission: updatedSubmission });
+    const email = account ? await sendClientListingNotification({
+      user: account,
+      listing,
+      notificationType: 'client_account_listing_created',
+    }) : null;
+
+    return NextResponse.json({
+      ok: true,
+      listing,
+      submission: updatedSubmission,
+      email: email ? { status: email.status, provider: email.provider, tracking: email.tracking } : null,
+      missingInformation: email?.missingInformation || [],
+    });
   } catch (error) {
     const storageError = publicStorageError(error);
     if (storageError) return NextResponse.json(storageError, { status: storageError.status });

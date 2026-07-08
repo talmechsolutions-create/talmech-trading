@@ -30,6 +30,8 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
   const [listings, setListings] = useState(initialListings);
   const [query, setQuery] = useState('');
   const [message, setMessage] = useState('');
+  const [emailLoadingId, setEmailLoadingId] = useState('');
+  const [manualCopy, setManualCopy] = useState<{ listingId: string; temporaryPassword?: string; instructions?: string } | null>(null);
 
   const filtered = useMemo(() => listings.filter((listing) => {
     if (!query) return true;
@@ -62,6 +64,76 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
     }
   }
 
+  function notification(row: any) {
+    const r = raw(row);
+    return r.clientNotification && typeof r.clientNotification === 'object'
+      ? r.clientNotification
+      : {
+          emailStatus: r.clientNotificationStatus,
+          emailProvider: r.clientNotificationProvider,
+          emailRecipient: r.clientNotificationRecipient || r.ownerEmail,
+          lastAttemptAt: r.clientNotificationLastAttemptAt,
+          lastSentAt: r.clientNotificationLastSentAt,
+          clientFollowUpRequired: r.clientFollowUpRequired,
+        };
+  }
+
+  function missingItems(row: any) {
+    const fromRaw = raw(row).missingInformation;
+    if (Array.isArray(fromRaw)) return fromRaw;
+    const strategy = initialStrategies[row.id];
+    return Array.isArray(strategy?.missingDataWarnings)
+      ? strategy.missingDataWarnings.map((message: string) => ({ label: 'Listing warning', message }))
+      : [];
+  }
+
+  function emailStatusClass(row: any) {
+    const status = String(notification(row).emailStatus || '').toLowerCase();
+    if (status === 'sent') return 'pill green';
+    if (status === 'failed' || status.includes('error')) return 'pill gold';
+    return 'pill';
+  }
+
+  async function resendClientEmail(row: any) {
+    setEmailLoadingId(row.id);
+    setManualCopy(null);
+    const res = await fetch(`/api/admin/listings/${encodeURIComponent(row.id)}/resend-client-email`, {
+      method: 'POST',
+    }).then((r) => r.json()).catch(() => ({ ok: false, error: 'Unable to resend client email.' }));
+    setEmailLoadingId('');
+
+    if (!res.ok) {
+      setMessage(res.error || 'Unable to resend client email.');
+      return;
+    }
+
+    const tracking = res.email?.tracking || {};
+    const missing = Array.isArray(res.missingInformation) ? res.missingInformation : [];
+    setListings((rows) => rows.map((listing) => listing.id === row.id ? {
+      ...listing,
+      raw: {
+        ...raw(listing),
+        clientNotification: tracking,
+        clientNotificationStatus: tracking.emailStatus || res.email?.status,
+        clientNotificationRecipient: tracking.emailRecipient,
+        clientNotificationLastAttemptAt: tracking.lastAttemptAt,
+        clientNotificationLastSentAt: tracking.lastSentAt,
+        missingInformation: missing,
+        clientFollowUpRequired: missing.length > 0 || tracking.emailStatus !== 'sent',
+      },
+    } : listing));
+    if (res.manualCopy) setManualCopy({ listingId: row.id, ...res.manualCopy });
+    setMessage(res.email?.status === 'sent'
+      ? `Client email sent for ${row.id}.`
+      : `Client email could not be confirmed for ${row.id}. Copy the one-time instructions if needed.`);
+  }
+
+  async function copyManualInstructions() {
+    if (!manualCopy?.instructions) return;
+    await navigator.clipboard.writeText(manualCopy.instructions);
+    setMessage(`One-time instructions copied for ${manualCopy.listingId}.`);
+  }
+
   return (
     <main className="adminShell section">
       <div className="container">
@@ -82,6 +154,16 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
           </div>
         </div>
         {message && <p className="notice">{message}</p>}
+        {manualCopy && (
+          <div className="manualCopyBox adminManualCopy">
+            <span className="pill gold">Shown once</span>
+            <h3>Manual delivery instructions for {manualCopy.listingId}</h3>
+            <p className="muted">Email delivery was not confirmed. Copy these instructions now if the client needs credentials; the temporary password is not stored in plain text.</p>
+            {manualCopy.temporaryPassword && <label>Temporary password<input className="input" readOnly value={manualCopy.temporaryPassword} onFocus={(event) => event.currentTarget.select()} /></label>}
+            <label>Message preview<textarea readOnly value={manualCopy.instructions || ''} onFocus={(event) => event.currentTarget.select()} /></label>
+            <button className="btn secondary" type="button" onClick={copyManualInstructions}>Copy instructions</button>
+          </div>
+        )}
         <div className="waAdminTableWrap">
           <table className="waAdminTable adminListingTable">
             <thead>
@@ -100,6 +182,7 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
                 <th>Status</th>
                 <th>Visibility</th>
                 <th>Strategy</th>
+                <th>Email / follow-up</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
@@ -107,6 +190,9 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
             <tbody>
               {filtered.map((listing) => {
                 const r = raw(listing);
+                const note = notification(listing);
+                const missing = missingItems(listing);
+                const followUpRequired = Boolean(note.clientFollowUpRequired || r.clientFollowUpRequired || missing.length || note.emailStatus !== 'sent');
                 return (
                   <tr key={listing.id}>
                     <td><Link href={`/admin/listings/${listing.id}`}>{listing.id}</Link></td>
@@ -123,10 +209,17 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
                     <td><span className="pill">{listing.status || '-'}</span></td>
                     <td><span className={r.listingVisibility === 'public' ? 'pill green' : 'pill gold'}>{r.listingVisibility || 'public'} / {r.listingApprovalStatus || 'approved'}</span></td>
                     <td><span className={(initialStrategies[listing.id]?.qualityScore || 0) >= 75 ? 'pill green' : 'pill gold'}>Quality {initialStrategies[listing.id]?.qualityScore || '-'}</span><p className="waAccountMini">{initialStrategies[listing.id]?.suggestedAdminActions?.[0] || 'Needs admin verification'}</p></td>
+                    <td>
+                      <span className={emailStatusClass(listing)}>{note.emailStatus || 'not sent'}</span>
+                      {followUpRequired && <span className="pill gold followUpPill">Client follow-up required</span>}
+                      <p className="waAccountMini">{note.emailRecipient || r.ownerEmail || 'No recipient email'}</p>
+                      {missing.length > 0 && <p className="waAccountMini">{missing.slice(0, 2).map((item: any) => item.label || item.message || String(item)).join(' / ')}</p>}
+                    </td>
                     <td>{formatDate(listing.createdAt)}</td>
                     <td>
                       <div className="waAdminActions">
                         <Link className="btn secondary" href={`/admin/listings/${listing.id}`}>View</Link>
+                        <button className="btn secondary" type="button" disabled={emailLoadingId === listing.id} onClick={() => resendClientEmail(listing)}>{emailLoadingId === listing.id ? 'Sending...' : 'Resend email'}</button>
                         <button className="btn secondary" type="button" onClick={() => patchListing(listing.id, { status: 'Open', verified: true, raw: { ...r, listingVisibility: 'public', listingApprovalStatus: 'approved', adminActionStatus: 'Verified' } }, `${listing.id} verified.`)}>Verified</button>
                         <button className="btn secondary" type="button" onClick={() => patchListing(listing.id, { status: 'Needs photos', raw: { ...r, listingApprovalStatus: 'needs_photos', adminActionStatus: 'Needs photos' } }, `${listing.id} marked needs photos.`)}>Needs photos</button>
                         <button className="btn secondary" type="button" onClick={() => patchListing(listing.id, { status: 'Needs price confirmation', raw: { ...r, listingApprovalStatus: 'needs_price_confirmation', adminActionStatus: 'Needs price confirmation' } }, `${listing.id} marked needs price confirmation.`)}>Needs price</button>
@@ -140,7 +233,7 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
                   </tr>
                 );
               })}
-              {!filtered.length && <tr><td colSpan={16}>No real marketplace listings found.</td></tr>}
+              {!filtered.length && <tr><td colSpan={17}>No real marketplace listings found.</td></tr>}
             </tbody>
           </table>
         </div>

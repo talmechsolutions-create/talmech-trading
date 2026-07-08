@@ -104,7 +104,7 @@ export default function AccountWorkspace({ view }: { view: View }) {
   const [tickets, setTickets] = useState<any[]>([]);
   const [listingForm, setListingForm] = useState<any>(blankListing);
   const [requirementForm, setRequirementForm] = useState<any>(blankRequirement);
-  const [ticketForm, setTicketForm] = useState({ category: 'General support', priority: 'Normal', subject: '', message: '' });
+  const [ticketForm, setTicketForm] = useState({ category: 'General support', priority: 'Normal', subject: '', message: '', attachmentNote: '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -211,7 +211,7 @@ export default function AccountWorkspace({ view }: { view: View }) {
     }).then((r) => r.json()).catch(() => ({ ok: false, error: 'Unable to create ticket.' }));
     setMessage(res.ok ? 'Support ticket created.' : res.error || 'Unable to create ticket.');
     if (res.ok) {
-      setTicketForm({ category: 'General support', priority: 'Normal', subject: '', message: '' });
+      setTicketForm({ category: 'General support', priority: 'Normal', subject: '', message: '', attachmentNote: '' });
       await load();
     }
   }
@@ -272,8 +272,23 @@ export default function AccountWorkspace({ view }: { view: View }) {
               <h1 className="pageTitle">Welcome, {user?.firmName || user?.ownerName || user?.name || 'Talmech client'}</h1>
               <p className="muted">Manage listings, buying requirements, orders, profile details, and support tickets from one place.</p>
             </div>
-            <a className="btn secondary" href="https://wa.me/917389642874" target="_blank" rel="noreferrer">Contact Talmech</a>
+            <div className="accountProfileSummary">
+              <span className="accountProfileAvatar">{String(user?.firmName || user?.ownerName || 'T').slice(0, 1).toUpperCase()}</span>
+              <div>
+                <b>{user?.ownerName || user?.name || 'Client user'}</b>
+                <small>{user?.email || user?.primaryMobile || 'Contact pending'}</small>
+              </div>
+              <span className="pill">{profileNeedsReview ? 'Profile review' : 'Active workspace'}</span>
+              <a className="btn secondary" href="https://wa.me/917389642874" target="_blank" rel="noreferrer">Contact Talmech</a>
+            </div>
           </div>
+          {loading && <p className="notice slimNotice">Loading your workspace data...</p>}
+          <section className="accountSummaryStrip">
+            <div><span>Account ID</span><b>{user?.id || '-'}</b></div>
+            <div><span>Account type</span><b>{accountType}</b></div>
+            <div><span>Firm</span><b>{user?.firmName || user?.company || '-'}</b></div>
+            <div><span>Profile status</span><b>{profileNeedsReview ? 'Needs review' : 'Current'}</b></div>
+          </section>
           {profileNeedsReview && <p className="notice">Please review and complete your business profile. Talmech admin can still assist you.</p>}
           {mustChangePassword && (
             <section className="panel accountPasswordPanel">
@@ -393,10 +408,11 @@ export default function AccountWorkspace({ view }: { view: View }) {
             <section className="panel">
               <h2>Help tickets</h2>
               <div className="formGrid">
-                <label>Category<input className="input" value={ticketForm.category} onChange={(event) => setTicketForm((form) => ({ ...form, category: event.target.value }))} /></label>
+                <label>Issue type<input className="input" value={ticketForm.category} onChange={(event) => setTicketForm((form) => ({ ...form, category: event.target.value }))} placeholder="Listing, payment, logistics, profile, photos..." /></label>
                 <label>Priority<select value={ticketForm.priority} onChange={(event) => setTicketForm((form) => ({ ...form, priority: event.target.value }))}><option>Normal</option><option>High</option><option>Urgent</option></select></label>
                 <label className="span2">Subject<input className="input" value={ticketForm.subject} onChange={(event) => setTicketForm((form) => ({ ...form, subject: event.target.value }))} /></label>
                 <label className="span2">Message<textarea value={ticketForm.message} onChange={(event) => setTicketForm((form) => ({ ...form, message: event.target.value }))} /></label>
+                <label className="span2">Attachment note<input className="input" value={ticketForm.attachmentNote} onChange={(event) => setTicketForm((form) => ({ ...form, attachmentNote: event.target.value }))} placeholder="Paste image/document link or note what you will share on WhatsApp." /></label>
                 <button className="btn span2" type="button" onClick={createTicket}>Create ticket</button>
               </div>
               <div className="accountTicketList">

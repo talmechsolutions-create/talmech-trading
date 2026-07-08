@@ -27,6 +27,8 @@ type AdminRow = {
   accountType: string;
   credentialsSentAt: string;
   emailDeliveryStatus: string;
+  emailRecipient: string;
+  clientFollowUpRequired: boolean;
   listingStatus: string;
   listingId: string;
 };
@@ -117,8 +119,8 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
         <div className="grid cards4 waAccountSummaryGrid">
           <div className="card"><h2>{rows.filter((row) => row.accountStatus === 'Not Created').length}</h2><p className="muted">Accounts not created</p></div>
           <div className="card"><h2>{rows.filter((row) => row.accountStatus === 'Account Created' || row.accountStatus === 'Email Sent').length}</h2><p className="muted">Accounts created</p></div>
-          <div className="card"><h2>{rows.filter((row) => row.emailDeliveryStatus === 'sent').length}</h2><p className="muted">Activation emails sent</p></div>
-          <div className="card"><h2>{rows.filter((row) => row.accountStatus === 'Needs Follow-up').length}</h2><p className="muted">Needs follow-up</p></div>
+          <div className="card"><h2>{rows.filter((row) => row.emailDeliveryStatus === 'sent').length}</h2><p className="muted">Client emails sent</p></div>
+          <div className="card"><h2>{rows.filter((row) => row.accountStatus === 'Needs Follow-up' || row.clientFollowUpRequired).length}</h2><p className="muted">Needs follow-up</p></div>
         </div>
 
         <div className="waAdminTableWrap">
@@ -161,8 +163,9 @@ export default function WhatsappUploadsAdmin({ initialRows }: { initialRows: Adm
                   <td><span className="pill">{row.status}</span></td>
                   <td>
                     <span className={accountPillClass(row.accountStatus)}>{row.accountStatus || 'Not Created'}</span>
+                    {row.clientFollowUpRequired && <span className="pill gold followUpPill">Client follow-up required</span>}
                     {row.accountId && <p className="waAccountMini">{row.accountId}<br />{row.accountType || '-'}</p>}
-                    {row.credentialsSentAt && <p className="waAccountMini">Email: {row.emailDeliveryStatus || 'queued'}<br />{shortDate(row.credentialsSentAt)}</p>}
+                    {row.credentialsSentAt && <p className="waAccountMini">Email: {row.emailDeliveryStatus || 'queued'}<br />{row.emailRecipient || ''}<br />{shortDate(row.credentialsSentAt)}</p>}
                   </td>
                   <td>
                     <span className={row.listingStatus === 'Listing Created' ? 'pill green' : 'pill'}>{row.listingStatus || 'Not Created'}</span>

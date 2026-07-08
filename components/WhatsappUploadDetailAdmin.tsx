@@ -182,6 +182,18 @@ function accountPillClass(account?: WhatsappAccountCreation) {
   return 'pill green';
 }
 
+function emailPillClass(status?: string) {
+  const lower = String(status || '').toLowerCase();
+  if (lower === 'sent') return 'pill green';
+  if (lower.includes('fail') || lower.includes('error')) return 'pill gold';
+  return 'pill';
+}
+
+type ManualCopy = {
+  temporaryPassword?: string;
+  instructions?: string;
+};
+
 export default function WhatsappUploadDetailAdmin({ submission }: { submission: WhatsappUploadSubmission }) {
   const [status, setStatus] = useState<WhatsappUploadStatus>(submission.status);
   const [internalAdminNotes, setInternalAdminNotes] = useState(submission.internalAdminNotes || '');
@@ -192,6 +204,7 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
   const [accountForm, setAccountForm] = useState<AccountForm>(() => initialAccountForm(submission));
   const [accountSaving, setAccountSaving] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
+  const [manualCopy, setManualCopy] = useState<ManualCopy | null>(null);
   const [manualActivationUrl, setManualActivationUrl] = useState('');
   const [listingForm, setListingForm] = useState<ListingForm>(() => initialListingForm(submission));
   const [listingSaving, setListingSaving] = useState(false);
@@ -238,6 +251,7 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
     if (!window.confirm('Create an admin-assisted client account from this WhatsApp submission?')) return;
 
     setAccountSaving(true);
+    setManualCopy(null);
     setManualActivationUrl('');
     const res = await fetch(`/api/admin/whatsapp-uploads/${encodeURIComponent(current.submissionId)}/create-account`, {
       method: 'POST',
@@ -257,14 +271,16 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
       setInternalAdminNotes(res.submission.internalAdminNotes || '');
       setListingForm((form) => ({ ...form, accountId: res.submission.accountCreation?.accountId || form.accountId }));
     }
+    setManualCopy(res.manualCopy || null);
     setManualActivationUrl(res.manualActivationUrl || '');
-    setMessage(res.manualActivationUrl
-      ? 'Account created. Email was queued or not sent; copy the one-time activation link before leaving this page.'
-      : 'Account created and activation email sent or queued.');
+    setMessage(res.manualCopy || res.manualActivationUrl
+      ? 'Account created. Email was queued or not sent; copy the one-time login instructions before leaving this page.'
+      : 'Account created and client email sent or queued.');
   }
 
   async function resendEmail() {
     setEmailSending(true);
+    setManualCopy(null);
     setManualActivationUrl('');
     const res = await fetch(`/api/admin/whatsapp-uploads/${encodeURIComponent(current.submissionId)}/resend-account-email`, {
       method: 'POST',
@@ -277,19 +293,26 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
     }
 
     if (res.submission) setCurrent(res.submission);
+    setManualCopy(res.manualCopy || null);
     setManualActivationUrl(res.manualActivationUrl || '');
-    setMessage(res.manualActivationUrl
-      ? 'Account email queued. Copy the fresh activation link before leaving this page.'
+    setMessage(res.manualCopy || res.manualActivationUrl
+      ? 'Account email queued or not sent. Copy the fresh one-time login instructions before leaving this page.'
       : 'Account email resent or queued.');
   }
 
-  async function copyActivationLink() {
-    if (!manualActivationUrl) return;
-    await navigator.clipboard.writeText(manualActivationUrl);
-    setMessage('Activation link copied.');
+  async function copyOneTimeCredentials() {
+    const text = manualCopy?.instructions || manualActivationUrl;
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    setMessage('One-time login instructions copied.');
   }
 
   async function copyLoginInstructions() {
+    if (manualCopy?.instructions) {
+      await navigator.clipboard.writeText(manualCopy.instructions);
+      setMessage('Login instructions copied.');
+      return;
+    }
     const account = current.accountCreation;
     const loginUrl = `${window.location.origin}/signin`;
     const instructions = [
@@ -300,10 +323,10 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
       `Firm name: ${accountForm.firmName || current.firmName}`,
       `Registered mobile: ${accountForm.mobile || current.mobile}`,
       `Registered email: ${accountForm.email || current.email}`,
-      manualActivationUrl ? `Activation link: ${manualActivationUrl}` : 'Activation link: sent/queued by email. Ask Talmech admin if you need a fresh link.',
       `Login URL: ${loginUrl}`,
+      manualActivationUrl ? `Activation link: ${manualActivationUrl}` : 'Password: use the emailed temporary password or ask Talmech admin to resend fresh credentials.',
       '',
-      'For security, please set your password through the activation link and review your business details after first login.',
+      'For security, please change your temporary password after first login and review your business details.',
       'If you did not request this account, contact Talmech support immediately.',
     ].join('\n');
     await navigator.clipboard.writeText(instructions);
@@ -339,7 +362,10 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
       setStatus(res.submission.status);
     }
     setAllowAnotherListing(false);
-    setMessage(`Listing ${res.listing?.id || ''} created from WhatsApp submission.`);
+    const missingCount = Array.isArray(res.missingInformation) ? res.missingInformation.length : 0;
+    const emailStatus = res.email?.status ? ` Email status: ${res.email.status}.` : '';
+    const followUp = missingCount ? ` Client follow-up required for ${missingCount} missing item${missingCount === 1 ? '' : 's'}.` : '';
+    setMessage(`Listing ${res.listing?.id || ''} created from WhatsApp submission.${emailStatus}${followUp}`);
   }
 
   return (
@@ -443,7 +469,7 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
             <div>
               <span className={accountPillClass(current.accountCreation)}>{current.accountCreation?.status || 'Not Created'}</span>
               <h2>Create Client Account from WhatsApp Submission</h2>
-              <p className="muted">Admin-created accounts use activation links. Email and mobile OTP stay disabled only for this admin-assisted setup record.</p>
+              <p className="muted">Admin-created accounts receive a temporary password, and email/mobile OTP stay disabled only for this assisted setup record.</p>
             </div>
             {current.accountCreation?.accountId && <Link className="btn secondary" href="/admin-users">Open user admin</Link>}
           </div>
@@ -454,16 +480,33 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
                 <Field label="Linked account ID" value={current.accountCreation.accountId} />
                 <Field label="Account type" value={current.accountCreation.accountType} />
                 <Field label="Verification status" value={current.accountCreation.verificationStatus} />
-                <Field label="Activation status" value={current.accountCreation.activationStatus} />
+                <Field label="Login status" value={current.accountCreation.activationStatus} />
                 <Field label="Credentials sent" value={formatDate(current.accountCreation.credentialsSentAt || '')} />
-                <Field label="Email status" value={[current.accountCreation.emailStatus, current.accountCreation.emailProvider].filter(Boolean).join(' / ')} />
+                <Field label="Email recipient" value={current.accountCreation.emailRecipient || current.email} />
+                <div className="waDetailField">
+                  <span>Email status</span>
+                  <b><span className={emailPillClass(current.accountCreation.emailStatus)}>{[current.accountCreation.emailStatus || 'pending', current.accountCreation.emailProvider].filter(Boolean).join(' / ')}</span></b>
+                </div>
+                {current.accountCreation.clientFollowUpRequired && (
+                  <div className="waDetailField">
+                    <span>Follow-up</span>
+                    <b><span className="pill gold">Client follow-up required</span></b>
+                  </div>
+                )}
               </div>
-              {manualActivationUrl && (
+              {(manualCopy || manualActivationUrl) && (
                 <div className="waSensitiveBox">
-                  <b>Manual activation link</b>
-                  <p className="muted">Shown only after this protected create/resend action because email delivery is queued or not configured.</p>
-                  <input className="input waMonoInput" value={manualActivationUrl} readOnly />
-                  <button className="btn secondary" type="button" onClick={copyActivationLink}>Copy activation link</button>
+                  <b>One-time login instructions</b>
+                  <p className="muted">Shown only after this protected create/resend action because email delivery is queued or not configured. The password is not stored in plain text.</p>
+                  {manualCopy?.temporaryPassword && (
+                    <label>Temporary password<input className="input waMonoInput" value={manualCopy.temporaryPassword} readOnly onFocus={(event) => event.currentTarget.select()} /></label>
+                  )}
+                  {manualCopy?.instructions ? (
+                    <label>Message preview<textarea value={manualCopy.instructions} readOnly onFocus={(event) => event.currentTarget.select()} /></label>
+                  ) : (
+                    <input className="input waMonoInput" value={manualActivationUrl} readOnly />
+                  )}
+                  <button className="btn secondary" type="button" onClick={copyOneTimeCredentials}>Copy one-time instructions</button>
                 </div>
               )}
               <div className="waActionRow">
@@ -498,7 +541,7 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
               <label>Selected product form<input className="input" value={accountForm.selectedProductForm} onChange={(event) => setAccountField('selectedProductForm', event.target.value)} /></label>
               <label className="span2">Internal account note<textarea value={accountForm.adminNote} onChange={(event) => setAccountField('adminNote', event.target.value)} placeholder="Private note about review, call, missing details, or profile confirmation" /></label>
               <div className="span2 waAccountConfirmBox">
-                <p><b>Security:</b> No permanent password will be emailed. The user receives an activation link and sets a password without OTP for this admin-created setup only.</p>
+                <p><b>Security:</b> The generated temporary password is shown only after create/resend if email is not confirmed, stored only as a hash, and must be changed by the client after first login.</p>
                 <button className="btn" type="button" disabled={accountSaving} onClick={createAccount}>{accountSaving ? 'Creating account...' : 'Create Account'}</button>
               </div>
             </div>

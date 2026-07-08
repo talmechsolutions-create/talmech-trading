@@ -155,9 +155,21 @@ export default function ManualListingAdmin() {
                 <h3>Email</h3>
                 <Field label="Status" value={result.email?.status} />
                 <Field label="Provider" value={result.email?.provider} />
+                <Field label="Recipient" value={result.email?.tracking?.emailRecipient || result.account?.email} />
+                <Field label="Last attempt" value={result.email?.tracking?.lastAttemptAt} />
+                {result.email?.tracking?.clientFollowUpRequired && <span className="pill gold">Client follow-up required</span>}
                 <p className="muted">{result.email?.status === 'sent' ? 'Login email was sent by the configured provider.' : 'Email provider is missing or failed. Copy the one-time instructions below.'}</p>
               </div>
             </div>
+            {Array.isArray(result.missingInformation) && result.missingInformation.length > 0 && (
+              <div className="manualMissingInfo">
+                <span className="pill gold">Missing information</span>
+                <h3>Client follow-up requested</h3>
+                <div className="strategyWarningList">
+                  {result.missingInformation.map((item: any) => <span key={item.key || item.label || item.message}>{item.label || item.message}</span>)}
+                </div>
+              </div>
+            )}
             {result.manualCopy && (
               <div className="manualCopyBox">
                 <span className="pill gold">Shown once</span>

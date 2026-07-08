@@ -306,6 +306,714 @@ body{background:var(--bg);color:var(--ink);font-feature-settings:'kern';}
 @media(max-width:760px){.mapAssistCard,.pinLinkRow,.pinInputs,.vehicleOptionGrid{grid-template-columns:1fr}.pinPickerHead{display:grid}.pinActionStack{justify-content:stretch}.pinActionStack .btn,.pinLinkRow .btn{width:100%}.proPinPicker{padding:14px;border-radius:20px}.marketplaceShell{gap:16px}.marketFilters{padding:16px;border-radius:22px}.marketSearchBar{position:sticky;top:72px;z-index:20}.productCard{border-radius:18px}.paymentLayout{grid-template-columns:1fr}.paymentHeroCard{position:static}.invoiceDoc{padding:18px}}
 
 /* =========================================================
+   Talmech admin workflow UX upgrade
+   Listings, intelligence, WhatsApp conversion, email tracking, account workspace.
+========================================================= */
+.h1,
+.pageTitle,
+.productProCopy h1,
+.productProPanel h2,
+.productIntelHero h2,
+.productProCTA h2 {
+  letter-spacing: 0 !important;
+}
+
+.btn {
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+.adminShell {
+  background: linear-gradient(180deg, #07111f 0%, #091827 48%, #0b1320 100%);
+}
+
+.adminShell .container {
+  width: min(1320px, 94vw);
+}
+
+.adminShell .pageTitle,
+.adminShell h1,
+.adminShell h2,
+.adminShell h3,
+.adminShell b {
+  color: #f8fafc;
+}
+
+.adminShell .muted,
+.adminShell .waAccountMini {
+  color: #c4d1df;
+}
+
+.adminShell .card,
+.adminShell .panel,
+.adminShell .waDetailPanel,
+.adminShell .waSensitiveBox,
+.adminShell .waAccountConfirmBox,
+.adminShell .manualCopyBox,
+.adminShell .manualMissingInfo {
+  background: #0f1c2e;
+  border: 1px solid #273a50;
+  color: #e6edf5;
+  border-radius: 14px;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
+}
+
+.adminShell .card:hover {
+  transform: none;
+  border-color: #4f6f94;
+}
+
+.adminShell .notice {
+  background: #3a250b;
+  border-color: #a16207;
+  color: #fde68a;
+}
+
+.adminShell .success {
+  background: #0d3322;
+  border-color: #15803d;
+  color: #bbf7d0;
+}
+
+.adminShell .input,
+.adminShell select,
+.adminShell textarea {
+  min-height: 44px;
+  border-radius: 10px;
+  background: #091525;
+  border-color: #31475f;
+  color: #f8fafc;
+}
+
+.adminShell .input::placeholder,
+.adminShell textarea::placeholder {
+  color: #93a7bb;
+}
+
+.adminShell .btn.secondary {
+  background: #112338;
+  border-color: #36526e;
+  color: #e6edf5 !important;
+}
+
+.adminShell .btn.secondary:hover,
+.adminShell .btn.dark:hover {
+  border-color: #67e8f9;
+  box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12);
+}
+
+.adminShell .pill,
+.adminShell .badge,
+.adminShell .eyebrow {
+  border-radius: 999px;
+  background: #132f4b;
+  border-color: #2f6d9f;
+  color: #bfdbfe;
+}
+
+.adminShell .pill.green {
+  background: #0f3428;
+  border-color: #2dd4bf;
+  color: #a7f3d0;
+}
+
+.adminShell .pill.gold,
+.adminShell .followUpPill {
+  background: #3a250b;
+  border-color: #f59e0b;
+  color: #fde68a;
+}
+
+.followUpPill {
+  display: inline-flex;
+  margin-top: 8px;
+}
+
+.waAdminTableWrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #263a52;
+  border-radius: 14px;
+  background: #0a1728;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+}
+
+.adminShell .waAdminTable {
+  min-width: 1080px;
+  background: #0a1728;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.adminShell .waAdminTable th,
+.adminShell .waAdminTable td {
+  border-bottom: 1px solid #23364c;
+  color: #e6edf5;
+  padding: 14px;
+  vertical-align: top;
+}
+
+.adminShell .waAdminTable th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #10243a;
+  color: #dbeafe;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.adminShell .waAdminTable td {
+  background: #0d1b2d;
+}
+
+.adminShell .waAdminTable tbody tr:hover td {
+  background: #112238;
+}
+
+.adminShell .waAdminTable a {
+  color: #93c5fd;
+  font-weight: 900;
+}
+
+.adminListingTable td:nth-child(3) {
+  min-width: 220px;
+}
+
+.adminListingTable td:nth-child(16),
+.adminListingTable td:last-child {
+  min-width: 260px;
+}
+
+.waAdminActions,
+.waActionRow,
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.waAdminActions .btn {
+  min-height: 38px;
+  padding: 9px 12px;
+  font-size: 12px;
+}
+
+.listingMiniImages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+}
+
+.listingMiniImages img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #3b526c;
+  background: #081525;
+}
+
+.waDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.waDetailPanel {
+  padding: 20px;
+}
+
+.waDetailPanel.wide {
+  margin-top: 16px;
+}
+
+.waDetailField {
+  display: grid;
+  gap: 5px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.waDetailField span {
+  color: #9fb2c7;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.waAdminEditGrid,
+.waAdminAccountGrid,
+.formGrid {
+  gap: 16px;
+}
+
+.waSensitiveBox,
+.manualCopyBox,
+.manualMissingInfo {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+}
+
+.waMonoInput,
+.manualCopyBox input {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.adminManualCopy {
+  margin: 0 0 18px;
+}
+
+.manualListingLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.manualListingPanel,
+.manualResultPanel {
+  min-width: 0;
+}
+
+.manualSubmitBar {
+  position: sticky;
+  bottom: 14px;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #273a50;
+  border-radius: 14px;
+  background: rgba(15, 28, 46, 0.96);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(12px);
+}
+
+.listingIntelMode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.intelPanel {
+  margin-top: 20px;
+}
+
+.listingStrategyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.listingStrategyGrid > .sectionHead {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.listingStrategyCard {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 14px;
+  background: #0f1c2e;
+  border: 1px solid #273a50;
+  color: #e6edf5;
+  box-shadow: 0 18px 54px rgba(0, 0, 0, 0.22);
+}
+
+.strategyCardHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.strategyCardHead h3 {
+  margin: 10px 0 0;
+  line-height: 1.25;
+}
+
+.strategySummaryCard,
+.strategyFacetCard {
+  border: 1px solid #294057;
+  border-radius: 12px;
+  background: #102338;
+  padding: 14px;
+}
+
+.strategySummaryCard p,
+.strategyFacetCard p {
+  margin: 7px 0 0;
+  color: #c4d1df;
+  line-height: 1.55;
+}
+
+.strategyFacetGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.strategyWarningList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #a16207;
+  border-radius: 12px;
+  background: #3a250b;
+  color: #fde68a;
+}
+
+.strategyWarningList b {
+  width: 100%;
+}
+
+.strategyWarningList span {
+  display: inline-flex;
+  border: 1px solid #f59e0b;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.accountShell {
+  background: #f4f7fb;
+}
+
+.accountLayout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 22px;
+}
+
+.accountSidebar {
+  position: sticky;
+  top: 96px;
+  align-self: start;
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #dbe7f3;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+}
+
+.accountSidebar nav {
+  display: grid;
+  gap: 7px;
+}
+
+.accountSidebar nav a {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  border-radius: 10px;
+  padding: 0 12px;
+  color: #334155;
+  font-weight: 850;
+}
+
+.accountSidebar nav a.active {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.accountHero {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 1px solid #dbe7f3;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+}
+
+.accountProfileSummary {
+  min-width: 280px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #dbe7f3;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.accountProfileSummary .btn,
+.accountProfileSummary .pill {
+  grid-column: 1 / -1;
+}
+
+.accountProfileSummary small {
+  display: block;
+  color: #64748b;
+  font-weight: 750;
+  word-break: break-word;
+}
+
+.accountProfileAvatar,
+.accountAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #2dd4bf, #60a5fa);
+  color: #062033;
+  font-weight: 1000;
+}
+
+.accountSummaryStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.accountSummaryStrip div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #dbe7f3;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.accountSummaryStrip span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.accountSummaryStrip b {
+  display: block;
+  margin-top: 6px;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.accountTableWrap {
+  overflow-x: auto;
+  border: 1px solid #dbe7f3;
+  border-radius: 12px;
+}
+
+.accountTableWrap table {
+  min-width: 760px;
+}
+
+.accountTicketList,
+.adminTicketGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.adminTicketCard {
+  display: grid;
+  gap: 12px;
+}
+
+.tmHeaderShell {
+  gap: 22px;
+}
+
+.tmBrandCopy strong,
+.tmBrandCopy small,
+.tmNavLinks a {
+  letter-spacing: 0 !important;
+}
+
+.tmHeaderRight {
+  gap: 12px;
+}
+
+.tmModeChip,
+.tmSignin,
+.tmUserPill {
+  min-height: 42px;
+}
+
+.tmModeChip {
+  min-width: 112px;
+}
+
+.tmSignin {
+  min-width: 92px;
+}
+
+.tmProfileMenu {
+  position: relative;
+}
+
+.tmProfileDropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 220px;
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid rgba(191, 219, 254, 0.25);
+  border-radius: 14px;
+  background: #0b2340;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.tmProfileDropdown a,
+.tmProfileDropdown button {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 12px;
+  background: transparent;
+  color: #eff6ff;
+  font-weight: 850;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tmProfileDropdown a:hover,
+.tmProfileDropdown button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 1180px) {
+  .waDetailGrid,
+  .listingStrategyGrid,
+  .strategyFacetGrid,
+  .manualListingLayout,
+  .accountTicketList,
+  .adminTicketGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .accountSummaryStrip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 980px) {
+  .tmNav.open {
+    padding: 12px;
+    border: 1px solid rgba(191, 219, 254, 0.18);
+    border-radius: 16px;
+    background: rgba(7, 17, 31, 0.5);
+  }
+
+  .tmHeaderRight {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .tmTraderSwitch,
+  .tmSignin,
+  .tmUserPill,
+  .tmModeChip {
+    width: 100%;
+  }
+
+  .tmProfileDropdown {
+    position: static;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .accountLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .accountSidebar {
+    position: static;
+  }
+
+  .accountSidebar nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .accountHero {
+    display: grid;
+  }
+
+  .accountProfileSummary {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .sectionHead {
+    display: grid;
+    align-items: start;
+  }
+
+  .adminShell .container,
+  .container {
+    width: min(94vw, 100% - 20px);
+  }
+
+  .adminShell .waAdminTable {
+    min-width: 900px;
+  }
+
+  .waAdminActions .btn,
+  .waActionRow .btn,
+  .manualSubmitBar .btn,
+  .manualListingLayout .btn,
+  .accountQuickActions .btn {
+    width: 100%;
+  }
+
+  .manualSubmitBar {
+    position: static;
+    display: grid;
+  }
+
+  .waDetailPanel,
+  .adminShell .card,
+  .adminShell .panel,
+  .accountHero,
+  .accountSidebar {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .accountSummaryStrip,
+  .accountSidebar nav {
+    grid-template-columns: 1fr;
+  }
+
+  .accountProfileSummary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
    Professional sub-product intelligence pages
 ========================================================= */
 .productProPage {
@@ -1156,3 +1864,34 @@ body{background:var(--bg);color:var(--ink);font-feature-settings:'kern';}
 
 .listingImagePicker{display:grid;gap:14px;border:1px solid #dbe4ee;border-radius:18px;padding:16px;background:#f8fafc}.adminShell .listingImagePicker{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.16)}.listingImageGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.listingImageSlot{display:grid;gap:10px;border:1px solid #dbe4ee;border-radius:16px;padding:12px;background:#fff}.adminShell .listingImageSlot{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16)}.listingImagePreview{aspect-ratio:4/3;border-radius:14px;background:#e2e8f0;display:grid;place-items:center;overflow:hidden;color:#475569;font-weight:900}.listingImagePreview img,.listingImageGallery img,.listingMiniImages img{width:100%;height:100%;object-fit:cover;display:block}.listingMiniImages{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:86px}.listingMiniImages img{width:42px;height:42px;border-radius:10px;border:1px solid #dbe4ee;background:#fff}.listingImageGallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.listingImageGallery img{aspect-ratio:4/3;border-radius:18px;border:1px solid rgba(255,255,255,.16);background:#0f172a}.listingIntelShell .intelPanel{margin-top:22px}.listingIntelMode{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 22px}.listingStrategyGrid{display:grid;gap:16px;margin-top:24px}.listingStrategyCard h3{margin:10px 0 8px}.compactHead{align-items:flex-start;margin-bottom:14px}.adminListingActionPanel{display:grid;gap:12px}.slimNotice{padding:12px 14px;border-radius:14px}@media(max-width:900px){.listingImageGrid,.listingImageGallery{grid-template-columns:1fr}.listingAdminToolbar{grid-template-columns:1fr}.listingAdminToolbar .row{justify-content:flex-start}.listingAdminToolbar .btn{width:100%}}
 .metalProductSelector{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.metalProductSelector.compact{gap:10px}.metalProductSelector .selectorField{min-width:0}.fieldLabel{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}.fieldBadge{border-radius:999px;padding:3px 8px;font-size:10px;font-weight:950;border:1px solid #cbd5e1;background:#f8fafc;color:#475569;white-space:nowrap}.fieldBadge.required{border-color:#93c5fd;background:#eff6ff;color:#1d4ed8}.fieldBadge.recommended{border-color:#99f6e4;background:#ecfeff;color:#0f766e}.fieldBadge.optional{border-color:#e2e8f0;background:#f8fafc;color:#64748b}.adminShell .fieldBadge.optional{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#cbd5e1}.adminShell .fieldBadge.required{background:rgba(96,165,250,.16);border-color:rgba(147,197,253,.45);color:#bfdbfe}.adminShell .fieldBadge.recommended{background:rgba(45,212,191,.14);border-color:rgba(153,246,228,.38);color:#ccfbf1}.manualSubsection{border-top:1px solid rgba(255,255,255,.14);margin-top:20px;padding-top:18px;display:grid;gap:14px}.manualSubsection h3{margin:0;font-size:18px}.accountShell .metalProductSelector{grid-column:1/-1}.waAdminAccountGrid .metalProductSelector{grid-column:1/-1}@media(max-width:760px){.metalProductSelector{grid-template-columns:1fr}.fieldLabel{align-items:flex-start}.fieldBadge{margin-left:auto}}
+
+/* Final workflow override: keep newer admin/account/header styles above older legacy blocks. */
+.h1,.pageTitle,.productProCopy h1,.productProPanel h2,.productIntelHero h2,.productProCTA h2,.tmBrandCopy strong,.tmBrandCopy small,.tmNavLinks a{letter-spacing:0!important}
+.adminShell .waDetailPanel,.adminShell .waAccountConfirmBox,.adminShell .waSensitiveBox,.adminShell .manualCopyBox,.adminShell .manualMissingInfo,.adminShell .waAdminModeStrip article,.adminShell .manualSubmitBar{background:#0f1c2e!important;border:1px solid #273a50!important;color:#e6edf5!important;border-radius:14px}
+.adminShell .waDetailPanel h2,.adminShell .waDetailPanel b,.adminShell .waAdminAccountGrid label,.adminShell .waAccountConfirmBox b,.adminShell .waSensitiveBox b{color:#f8fafc!important}
+.adminShell .waSensitiveBox .muted,.adminShell .waAccountConfirmBox p,.adminShell .manualCopyBox p{color:#c4d1df!important}
+.adminShell .waAdminAccountGrid input,.adminShell .waAdminAccountGrid select,.adminShell .waAdminAccountGrid textarea{background:#091525!important;border-color:#31475f!important;color:#f8fafc!important}
+.adminShell .waAdminTable{background:#0a1728!important;border-collapse:separate!important;border-spacing:0!important}
+.adminShell .waAdminTable th{background:#10243a!important;color:#dbeafe!important;letter-spacing:0!important}
+.adminShell .waAdminTable td{background:#0d1b2d!important;color:#e6edf5!important;border-bottom:1px solid #23364c!important}
+.adminShell .waAdminTable tbody tr:hover td{background:#112238!important}
+.adminShell .pill.gold,.adminShell .followUpPill{background:#3a250b!important;border-color:#f59e0b!important;color:#fde68a!important}
+.adminShell .pill.green{background:#0f3428!important;border-color:#2dd4bf!important;color:#a7f3d0!important}
+.listingIntelShell .listingStrategyGrid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px!important}
+.listingIntelShell .listingStrategyGrid>.sectionHead{grid-column:1/-1}
+.listingIntelShell .listingStrategyCard{background:#0f1c2e!important;border:1px solid #273a50!important;color:#e6edf5!important;border-radius:14px!important;padding:18px!important}
+.listingIntelShell .strategyFacetGrid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important}
+.strategySummaryCard,.strategyFacetCard{background:#102338!important;border:1px solid #294057!important;color:#e6edf5!important}
+.strategySummaryCard p,.strategyFacetCard p{color:#c4d1df!important}
+.manualListingLayout{grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)!important}
+.accountProfileSummary{min-width:280px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;padding:12px;border:1px solid #dbe7f3;border-radius:12px;background:#f8fbff}
+.accountProfileSummary .btn,.accountProfileSummary .pill{grid-column:1/-1}
+.accountSummaryStrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.accountSummaryStrip div{min-width:0;padding:14px;border:1px solid #dbe7f3;border-radius:12px;background:#fff}
+.accountSummaryStrip span{display:block;color:#64748b;font-size:12px;font-weight:850;text-transform:uppercase}
+.accountSummaryStrip b{display:block;margin-top:6px;color:#0f172a;word-break:break-word}
+.tmProfileDropdown{background:#0b2340!important;border-color:rgba(191,219,254,.25)!important;border-radius:14px!important}
+.tmProfileDropdown a,.tmProfileDropdown button{background:transparent!important;color:#eff6ff!important}
+.tmProfileDropdown a:hover,.tmProfileDropdown button:hover{background:rgba(255,255,255,.1)!important}
+@media(max-width:1180px){.listingIntelShell .listingStrategyGrid,.listingIntelShell .strategyFacetGrid,.manualListingLayout{grid-template-columns:1fr!important}.accountSummaryStrip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.accountSummaryStrip,.accountProfileSummary{grid-template-columns:1fr}.adminShell .waAdminTable{min-width:900px}.waAdminActions .btn,.waActionRow .btn,.manualSubmitBar .btn,.manualListingLayout .btn,.accountQuickActions .btn{width:100%}}

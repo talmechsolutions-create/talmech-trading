@@ -117,6 +117,9 @@ function normalizeAccountCreation(row: any): WhatsappAccountCreation | undefined
     emailLastAttemptAt: sanitizeString(row.emailLastAttemptAt, 40),
     emailStatus: sanitizeString(row.emailStatus, 80),
     emailProvider: sanitizeString(row.emailProvider, 80),
+    emailRecipient: sanitizeString(row.emailRecipient, 254).toLowerCase(),
+    notificationType: sanitizeString(row.notificationType, 80),
+    clientFollowUpRequired: row.clientFollowUpRequired === undefined ? undefined : Boolean(row.clientFollowUpRequired),
     emailPreviewAvailable: row.emailPreviewAvailable === undefined ? undefined : Boolean(row.emailPreviewAvailable),
     lastEmailError: sanitizeMultiline(row.lastEmailError, 500),
     adminNote: sanitizeMultiline(row.adminNote, 800),
@@ -395,6 +398,8 @@ export function toWhatsappUploadAdminRow(row: WhatsappUploadSubmission) {
     accountType: account?.accountType || '',
     credentialsSentAt: account?.credentialsSentAt || '',
     emailDeliveryStatus: account?.emailStatus || '',
+    emailRecipient: account?.emailRecipient || '',
+    clientFollowUpRequired: Boolean(account?.clientFollowUpRequired),
     listingStatus: row.listingCreation?.status || 'Not Created',
     listingId: row.listingCreation?.lastListingId || row.listingCreation?.listingIds?.[0] || '',
   };

@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import { hashAdminAssistedPassword } from '@/lib/adminAssistedAccounts';
+import { sendClientListingNotification } from '@/lib/clientNotifications';
 import { createUserRegistration, listUsers, updateUserRegistrationRecord } from '@/lib/proDb';
 import { normalizeListingImages } from '@/lib/listingImages';
 import { createWorkspaceListing } from '@/lib/workspaceListings';
@@ -350,24 +351,23 @@ export async function createManualAdminClientListing(input: { account?: ManualAc
     prefix: 'LIST-MAN',
   });
 
-  if (createdAccount && tempPassword) {
-    emailResult = user.email
-      ? await sendManualEmail(user, listing, tempPassword)
-      : { status: 'manual_copy_required', provider: 'no_email' };
+  if (user?.id) {
+    emailResult = await sendClientListingNotification({
+      user,
+      listing,
+      temporaryPassword: tempPassword || undefined,
+      notificationType: 'client_account_listing_created',
+    });
     await updateUserRegistrationRecord(user.id, {
-      credentialsSentAt: now,
+      ...(createdAccount ? { credentialsSentAt: now } : {}),
       emailDeliveryStatus: emailResult.status,
       emailProvider: emailResult.provider,
-      lastManualListingId: listing.id,
-    });
-  } else if (user?.id) {
-    await updateUserRegistrationRecord(user.id, {
       lastManualListingId: listing.id,
       updatedAt: now,
     });
   }
 
-  const needsManualCopy = createdAccount && emailResult.status !== 'sent';
+  const needsManualCopy = emailResult.status !== 'sent';
 
   return {
     ok: true,
@@ -379,10 +379,12 @@ export async function createManualAdminClientListing(input: { account?: ManualAc
       provider: emailResult.provider,
       data: emailResult.data,
       error: emailResult.error,
+      tracking: emailResult.tracking,
     },
+    missingInformation: emailResult.missingInformation || [],
     manualCopy: needsManualCopy ? {
       temporaryPassword: tempPassword,
-      instructions: emailText(user, listing, tempPassword),
+      instructions: emailResult.text || emailText(user, listing, tempPassword),
       emailPreviewHtml: emailResult.html,
     } : undefined,
   };

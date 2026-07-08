@@ -48,6 +48,11 @@ export default function PublicHeader() {
     };
   }, []);
 
+  useEffect(() => {
+    setMenuOpen(false);
+    setProfileOpen(false);
+  }, [pathname]);
+
   const isActive = (href: string) => href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`);
   const isTrader = accountClass === 'trader' || String(user?.accountType || user?.role || '').toLowerCase().includes('trader');
   const status = user?.status === 'APPROVED' || user?.verified ? 'Verified' : user ? 'Review' : '';
@@ -79,10 +84,10 @@ export default function PublicHeader() {
         <div className="tmHeaderShell">
           <Link href="/" className="tmBrand" onClick={() => setMenuOpen(false)}>
             <span className="tmBrandIcon">T</span>
-            <span className="tmBrandCopy"><strong>Talmech Trading</strong><small>Metal sourcing • selling • logistics</small></span>
+            <span className="tmBrandCopy"><strong>Talmech Trading</strong><small>Metal sourcing | selling | logistics</small></span>
           </Link>
 
-          <button type="button" className={`tmMenuButton ${menuOpen ? 'active' : ''}`} aria-label="Toggle navigation menu" onClick={() => setMenuOpen((v) => !v)}><i /><i /><i /></button>
+          <button type="button" className={`tmMenuButton ${menuOpen ? 'active' : ''}`} aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((v) => !v)}><i /><i /><i /></button>
 
           <nav className={`tmNav ${menuOpen ? 'open' : ''}`} aria-label="Main navigation">
             <div className="tmNavLinks">
@@ -99,7 +104,7 @@ export default function PublicHeader() {
 
               {user ? (
                 <div className="tmProfileMenu">
-                  <button type="button" className="tmUserPill" onClick={() => setProfileOpen((open) => !open)}>
+                  <button type="button" className="tmUserPill" aria-expanded={profileOpen} onClick={() => setProfileOpen((open) => !open)}>
                     <span className="tmAvatar">{displayName.slice(0, 1).toUpperCase()}</span>
                     <span className="tmUserText"><b>{displayName}</b>{status && <small>{status} / {profileLabel}</small>}</span>
                   </button>

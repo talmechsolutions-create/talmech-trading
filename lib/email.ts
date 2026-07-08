@@ -36,9 +36,9 @@ export function leadEmailHtml(lead: any) {
   </div>`;
 }
 
-export async function sendOrQueueEmail({ to, subject, html, leadId }: { to?: string; subject: string; html: string; leadId: string }) {
+export async function sendOrQueueEmail({ to, subject, html, text, leadId }: { to?: string; subject: string; html: string; text?: string; leadId: string }) {
   if (!to) return { status: 'skipped', reason: 'No recipient email provided' };
-  const row = { id: `EMAIL-${Date.now()}`, leadId, to, subject, html, createdAt: new Date().toISOString(), status: 'queued' };
+  const row = { id: `EMAIL-${Date.now()}`, leadId, to, subject, html, text, createdAt: new Date().toISOString(), status: 'queued' };
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || process.env.NOTIFICATION_FROM_EMAIL || 'Talmech Trading <onboarding@resend.dev>';
   if (apiKey) {
@@ -46,7 +46,7 @@ export async function sendOrQueueEmail({ to, subject, html, leadId }: { to?: str
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from, to, subject, html })
+        body: JSON.stringify({ from, to, subject, html, text })
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) return { status: 'sent', provider: 'resend', data };
