@@ -99,9 +99,17 @@ export default function ManualListingAdmin() {
       setMessage(res.message || res.error || 'Unable to create account and listing.');
       return;
     }
-    setMessage(res.accountAction === 'created'
+    const emailStatus = res.email?.tracking?.emailStatus || res.email?.status;
+    const baseMessage = res.accountAction === 'created'
       ? 'Client account and listing created.'
-      : 'Existing client account linked and listing created.');
+      : 'Existing client account linked and listing created.';
+    if (emailStatus === 'failed') {
+      setMessage(`${baseMessage} Email failed. Please check SMTP settings or resend.`);
+    } else if (emailStatus === 'preview') {
+      setMessage(`${baseMessage} Email preview is available because SMTP is not configured.`);
+    } else {
+      setMessage(baseMessage);
+    }
     setResult(res);
   }
 
@@ -156,9 +164,12 @@ export default function ManualListingAdmin() {
                 <Field label="Status" value={result.email?.status} />
                 <Field label="Provider" value={result.email?.provider} />
                 <Field label="Recipient" value={result.email?.tracking?.emailRecipient || result.account?.email} />
+                <Field label="Sender" value={result.email?.tracking?.emailSender || result.email?.sender} />
                 <Field label="Last attempt" value={result.email?.tracking?.lastAttemptAt} />
+                <Field label="Last sent" value={result.email?.tracking?.lastEmailSentAt} />
                 {result.email?.tracking?.clientFollowUpRequired && <span className="pill gold">Client follow-up required</span>}
                 <p className="muted">{result.email?.status === 'sent' ? 'Login email was sent by the configured provider.' : 'Email provider is missing or failed. Copy the one-time instructions below.'}</p>
+                {result.email?.tracking?.emailError && <p className="waAccountMini">{result.email.tracking.emailError}</p>}
               </div>
             </div>
             {Array.isArray(result.missingInformation) && result.missingInformation.length > 0 && (

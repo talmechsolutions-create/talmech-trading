@@ -49,7 +49,16 @@ export function detectMissingInformation(input: { account?: any; listing?: any; 
     });
   }
 
-  if (!hasPositiveText(pick(source.certificateAvailable, source.certificateRequired, source.documents, source.certificateDetails))) {
+  if (!hasPositiveText(pick(
+    source.certificateAvailable,
+    source.certificateRequired,
+    source.certificateDetails,
+    source.materialTestCertificate,
+    source.testCertificate,
+    source.mtc,
+    source.invoiceAvailable,
+    source.documentSupport
+  ))) {
     items.push({
       key: 'certificateDetails',
       label: 'Certificate details pending',
@@ -58,11 +67,20 @@ export function detectMissingInformation(input: { account?: any; listing?: any; 
     });
   }
 
-  if (!pick(source.dispatchLocation, source.pickupAddress, source.deliveryLocation, source.city, source.state)) {
+  if (!pick(source.dispatchLocation, source.pickupAddress, source.pickupLocation, source.sourceLocation)) {
     items.push({
-      key: 'dispatchDelivery',
-      label: 'Dispatch or delivery details missing',
-      message: 'Dispatch/delivery location needs confirmation before outreach.',
+      key: 'dispatchLocation',
+      label: 'Dispatch location missing',
+      message: 'Dispatch, pickup, or stock location needs confirmation before outreach.',
+      severity: 'warning',
+    });
+  }
+
+  if (!pick(source.deliveryLocation, source.deliveryAddress, source.destinationLocation, source.buyerLocation)) {
+    items.push({
+      key: 'deliveryLocation',
+      label: 'Delivery location missing',
+      message: 'Delivery destination or serviceable location needs confirmation.',
       severity: 'warning',
     });
   }
@@ -81,6 +99,33 @@ export function detectMissingInformation(input: { account?: any; listing?: any; 
       key: 'stockProof',
       label: 'Stock proof pending',
       message: 'Stock availability, dispatch readiness, or proof needs confirmation.',
+      severity: 'warning',
+    });
+  }
+
+  if (!pick(source.grade, source.selectedGrade, source.finalGradeLabel, source.customGrade)) {
+    items.push({
+      key: 'grade',
+      label: 'Grade missing',
+      message: 'Material grade or quality specification needs confirmation.',
+      severity: 'warning',
+    });
+  }
+
+  if (!pick(source.productForm, source.selectedProductForm, source.finalProductFormLabel, source.customProductForm)) {
+    items.push({
+      key: 'productForm',
+      label: 'Product form missing',
+      message: 'Product form such as bar, sheet, plate, coil, scrap, casting, or finished component needs confirmation.',
+      severity: 'warning',
+    });
+  }
+
+  if (!hasPositiveText(pick(source.stockProof, source.stockPhoto, source.stockPhotos, source.loadingPhoto, source.lotPhoto)) && images.length === 0) {
+    items.push({
+      key: 'stockProofPhoto',
+      label: 'Stock proof/photo missing',
+      message: 'Ask client for stock proof, lot photo, loading photo, or product photo for verification.',
       severity: 'warning',
     });
   }

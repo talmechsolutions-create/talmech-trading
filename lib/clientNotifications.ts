@@ -1,5 +1,6 @@
 import { clientAccountListingCreatedEmail, clientFollowUpRequiredEmail } from '@/lib/clientEmailTemplates';
 import { sendOrQueueEmail } from '@/lib/email';
+import { getBusinessEmailFrom } from '@/lib/emailConfig';
 import { detectMissingInformation } from '@/lib/missingInformation';
 import { updateListing, updateUserRegistrationRecord } from '@/lib/proDb';
 import { sanitizeMultiline, sanitizeString } from '@/lib/validation';
@@ -11,6 +12,12 @@ export type ClientNotificationType =
 
 function publicError(result: any) {
   return sanitizeMultiline(JSON.stringify(result?.providerError || result?.data || result?.error || result?.reason || ''), 500);
+}
+
+function emailStatus(result: any): 'sent' | 'failed' | 'preview' {
+  if (result?.status === 'sent') return 'sent';
+  if (result?.status === 'preview') return 'preview';
+  return 'failed';
 }
 
 export async function sendClientListingNotification({
@@ -38,14 +45,20 @@ export async function sendClientListingNotification({
     text: template.text,
     leadId: listing?.id || user?.id || `CLIENT-${Date.now()}`,
   });
-  const status = emailResult.status === 'sent' ? 'sent' : emailResult.status === 'skipped' ? 'failed' : 'pending';
+  const status = emailStatus(emailResult);
+  const sender = sanitizeString(emailResult.from || getBusinessEmailFrom(), 254);
+  const provider = sanitizeString(emailResult.provider, 80);
+  const error = status === 'failed' ? publicError(emailResult) : '';
   const tracking = {
     notificationType,
     emailStatus: status,
-    emailProvider: sanitizeString(emailResult.provider, 80),
     emailRecipient: recipient,
+    emailSender: sender,
+    emailProvider: provider,
+    lastEmailSentAt: status === 'sent' ? sentAt : '',
     lastSentAt: status === 'sent' ? sentAt : '',
     lastAttemptAt: sentAt,
+    emailError: error,
     errorMessage: status === 'sent' ? '' : publicError(emailResult),
     missingInformation: missingItems,
     clientFollowUpRequired: missingItems.length > 0 || status !== 'sent',
@@ -58,8 +71,12 @@ export async function sendClientListingNotification({
         clientNotificationStatus: tracking.emailStatus,
         clientNotificationType: notificationType,
         clientNotificationRecipient: recipient,
+        clientNotificationSender: sender,
+        clientNotificationProvider: provider,
         clientNotificationLastAttemptAt: sentAt,
+        clientNotificationLastEmailSentAt: tracking.lastEmailSentAt,
         clientNotificationLastSentAt: tracking.lastSentAt,
+        clientNotificationEmailError: tracking.emailError,
         clientNotificationError: tracking.errorMessage,
       });
     }
@@ -72,8 +89,12 @@ export async function sendClientListingNotification({
           clientNotificationStatus: tracking.emailStatus,
           clientNotificationType: notificationType,
           clientNotificationRecipient: recipient,
+          clientNotificationSender: sender,
+          clientNotificationProvider: provider,
           clientNotificationLastAttemptAt: sentAt,
+          clientNotificationLastEmailSentAt: tracking.lastEmailSentAt,
           clientNotificationLastSentAt: tracking.lastSentAt,
+          clientNotificationEmailError: tracking.emailError,
           clientNotificationError: tracking.errorMessage,
           missingInformation: missingItems,
           clientFollowUpRequired: tracking.clientFollowUpRequired,

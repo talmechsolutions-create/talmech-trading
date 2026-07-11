@@ -24,14 +24,6 @@ function appBaseUrl() {
   return (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/+$/, '');
 }
 
-function escapeHtml(value: unknown) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 function roleCategory(accountType: string) {
   const lower = accountType.toLowerCase();
   if (lower.includes('trader')) return 'trader';
@@ -164,34 +156,6 @@ function productInterest(listing: ReturnType<typeof cleanListing>) {
   ].filter(Boolean).join(' / ');
 }
 
-function emailHtml(user: any, listing: any, password: string) {
-  const loginUrl = `${appBaseUrl()}/signin`;
-  const accountUrl = `${appBaseUrl()}/account`;
-  const rows = [
-    ['Firm name', user.firmName],
-    ['Account type', user.accountType],
-    ['Login email', user.email],
-    ['Login mobile', user.primaryMobile],
-    ['Temporary password', password],
-    ['Listing ID', listing.id],
-    ['Listing', `${listing.type} / ${listing.metal} / ${listing.product}`],
-    ['Client workspace', accountUrl],
-  ];
-
-  return `
-  <div style="font-family:Arial,sans-serif;line-height:1.55;color:#0f172a">
-    <h2 style="margin:0 0 10px">Your Talmech Trading workspace is ready</h2>
-    <p>Hello ${escapeHtml(user.ownerName || user.firmName || 'there')},</p>
-    <p>Talmech admin has created your client workspace and listing from the details shared with our team.</p>
-    <table style="border-collapse:collapse;width:100%;max-width:760px">
-      ${rows.map(([key, value]) => `<tr><td style="border:1px solid #dbe4ee;padding:10px;background:#f8fafc;font-weight:700;width:190px">${escapeHtml(key)}</td><td style="border:1px solid #dbe4ee;padding:10px">${escapeHtml(value || '-')}</td></tr>`).join('')}
-    </table>
-    <p><b>Next step:</b> sign in at <a href="${escapeHtml(loginUrl)}">${escapeHtml(loginUrl)}</a> with the temporary password above, then change your password immediately in the workspace.</p>
-    <p>Email/mobile OTP is not required for this admin-created account. Normal public OTP onboarding remains unchanged for public registrations.</p>
-    <p>Regards,<br/><b>Talmech Trading Team</b></p>
-  </div>`;
-}
-
 function emailText(user: any, listing: any, password: string) {
   return [
     'Your Talmech Trading workspace is ready.',
@@ -204,34 +168,6 @@ function emailText(user: any, listing: any, password: string) {
     `Workspace: ${appBaseUrl()}/account`,
     'Change this temporary password immediately after first login.',
   ].join('\n');
-}
-
-async function sendManualEmail(user: any, listing: any, password: string) {
-  const html = emailHtml(user, listing, password);
-  const text = emailText(user, listing, password);
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || process.env.NOTIFICATION_FROM_EMAIL || 'Talmech Trading <onboarding@resend.dev>';
-  if (!apiKey) {
-    return { status: 'preview_only', provider: 'manual_preview', html, text };
-  }
-
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from,
-        to: user.email,
-        subject: 'Your Talmech Trading workspace is ready',
-        html,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) return { status: 'sent', provider: 'resend', data };
-    return { status: 'provider_error', provider: 'resend', data, html, text };
-  } catch (error: any) {
-    return { status: 'provider_error', provider: 'resend', error: error?.message || String(error), html, text };
-  }
 }
 
 function safeAccount(user: any) {
@@ -362,6 +298,11 @@ export async function createManualAdminClientListing(input: { account?: ManualAc
       ...(createdAccount ? { credentialsSentAt: now } : {}),
       emailDeliveryStatus: emailResult.status,
       emailProvider: emailResult.provider,
+      emailSender: emailResult.tracking?.emailSender,
+      emailRecipient: emailResult.tracking?.emailRecipient,
+      emailStatus: emailResult.tracking?.emailStatus || emailResult.status,
+      lastEmailSentAt: emailResult.tracking?.lastEmailSentAt,
+      emailError: emailResult.tracking?.emailError,
       lastManualListingId: listing.id,
       updatedAt: now,
     });
@@ -377,6 +318,7 @@ export async function createManualAdminClientListing(input: { account?: ManualAc
     email: {
       status: emailResult.status,
       provider: emailResult.provider,
+      sender: emailResult.tracking?.emailSender,
       data: emailResult.data,
       error: emailResult.error,
       tracking: emailResult.tracking,

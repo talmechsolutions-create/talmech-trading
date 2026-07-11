@@ -70,6 +70,9 @@ export type WhatsappAccountCreation = {
   emailStatus?: string;
   emailProvider?: string;
   emailRecipient?: string;
+  emailSender?: string;
+  lastEmailSentAt?: string;
+  emailError?: string;
   notificationType?: string;
   clientFollowUpRequired?: boolean;
   emailPreviewAvailable?: boolean;
@@ -83,6 +86,13 @@ export type WhatsappListingCreation = {
   accountId?: string;
   lastListingId?: string;
   lastListingType?: string;
+  emailStatus?: string;
+  emailProvider?: string;
+  emailRecipient?: string;
+  emailSender?: string;
+  lastEmailSentAt?: string;
+  emailError?: string;
+  clientFollowUpRequired?: boolean;
   createdAt?: string;
   updatedAt?: string;
 };

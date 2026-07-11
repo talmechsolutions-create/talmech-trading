@@ -20,6 +20,13 @@ export type SupportTicket = {
   message: string;
   status: SupportTicketStatus;
   adminNote: string;
+  emailStatus?: string;
+  emailRecipient?: string;
+  emailSender?: string;
+  emailProvider?: string;
+  lastEmailSentAt?: string;
+  emailError?: string;
+  emailNotifications?: Array<Record<string, any>>;
   createdAt: string;
   updatedAt: string;
   timeline: { at: string; by: 'client' | 'admin' | 'system'; message: string; status?: SupportTicketStatus }[];
@@ -50,6 +57,23 @@ function normalizeTicket(row: any): SupportTicket {
     message: sanitizeMultiline(row?.message, 2000),
     status: normalizeStatus(row?.status),
     adminNote: sanitizeMultiline(row?.adminNote, 1200),
+    emailStatus: sanitizeString(row?.emailStatus, 80),
+    emailRecipient: sanitizeString(row?.emailRecipient, 254),
+    emailSender: sanitizeString(row?.emailSender, 254),
+    emailProvider: sanitizeString(row?.emailProvider, 80),
+    lastEmailSentAt: sanitizeString(row?.lastEmailSentAt, 40),
+    emailError: sanitizeMultiline(row?.emailError, 500),
+    emailNotifications: Array.isArray(row?.emailNotifications)
+      ? row.emailNotifications.slice(0, 25).map((item: any) => ({
+          type: sanitizeString(item?.type, 80),
+          status: sanitizeString(item?.status, 80),
+          recipient: sanitizeString(item?.recipient, 254),
+          sender: sanitizeString(item?.sender, 254),
+          provider: sanitizeString(item?.provider, 80),
+          at: sanitizeString(item?.at, 40),
+          error: sanitizeMultiline(item?.error, 500),
+        }))
+      : [],
     createdAt,
     updatedAt: sanitizeString(row?.updatedAt, 40) || createdAt,
     timeline: Array.isArray(row?.timeline)
@@ -188,6 +212,53 @@ export async function updateSupportTicket(ticketId: string, patch: { status?: st
       data: {
         updatedAt: new Date(ticket.updatedAt),
         status: ticket.status,
+        raw: ticket,
+      },
+    })),
+    async () => {
+      await writeJsonArray(supportTicketsFile, rows);
+      return ticket;
+    }
+  );
+}
+
+export async function recordSupportTicketEmailStatus(ticketId: string, tracking: Record<string, any>) {
+  const cleanId = sanitizeString(ticketId, 80);
+  const rows = await listSupportTickets();
+  const index = rows.findIndex((ticket: SupportTicket) => ticket.ticketId === cleanId);
+  if (index < 0) return null;
+
+  const current = rows[index];
+  const now = new Date().toISOString();
+  const notification = {
+    type: sanitizeString(tracking.type || tracking.notificationType, 80),
+    status: sanitizeString(tracking.emailStatus || tracking.status, 80),
+    recipient: sanitizeString(tracking.emailRecipient || tracking.recipient, 254),
+    sender: sanitizeString(tracking.emailSender || tracking.sender, 254),
+    provider: sanitizeString(tracking.emailProvider || tracking.provider, 80),
+    at: now,
+    error: sanitizeMultiline(tracking.emailError || tracking.error, 500),
+  };
+  const notifications = [notification, ...(current.emailNotifications || [])].slice(0, 25);
+
+  rows[index] = normalizeTicket({
+    ...current,
+    emailStatus: notification.status,
+    emailRecipient: notification.recipient,
+    emailSender: notification.sender,
+    emailProvider: notification.provider,
+    lastEmailSentAt: notification.status === 'sent' ? now : current.lastEmailSentAt,
+    emailError: notification.error,
+    emailNotifications: notifications,
+    updatedAt: now,
+  });
+  const ticket = rows[index];
+
+  return withTicketDb(
+    async () => fromDbTicket(await prisma.supportTicket.update({
+      where: { id: cleanId },
+      data: {
+        updatedAt: new Date(ticket.updatedAt),
         raw: ticket,
       },
     })),

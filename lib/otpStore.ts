@@ -1,4 +1,5 @@
 import { createHmac, randomInt, timingSafeEqual } from 'crypto';
+import { getOtpEmailFrom } from '@/lib/emailConfig';
 import {
   isValidEmail,
   isValidIndianMobile,
@@ -115,6 +116,7 @@ export async function deliverOtp({
       contact,
       purpose,
       message: `Your Talmech OTP is ${otp}. It expires in 5 minutes.`,
+      ...(channel === 'email' && getOtpEmailFrom() ? { from: getOtpEmailFrom() } : {}),
     }),
     cache: 'no-store',
   });

@@ -273,9 +273,11 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
     }
     setManualCopy(res.manualCopy || null);
     setManualActivationUrl(res.manualActivationUrl || '');
-    setMessage(res.manualCopy || res.manualActivationUrl
-      ? 'Account created. Email was queued or not sent; copy the one-time login instructions before leaving this page.'
-      : 'Account created and client email sent or queued.');
+    setMessage(res.email?.status === 'failed'
+      ? 'Account created, but email failed. Please check SMTP settings or resend.'
+      : res.email?.status === 'preview'
+        ? 'Account created. Email preview is available because SMTP is not configured.'
+        : 'Account created and client email sent.');
   }
 
   async function resendEmail() {
@@ -295,9 +297,11 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
     if (res.submission) setCurrent(res.submission);
     setManualCopy(res.manualCopy || null);
     setManualActivationUrl(res.manualActivationUrl || '');
-    setMessage(res.manualCopy || res.manualActivationUrl
-      ? 'Account email queued or not sent. Copy the fresh one-time login instructions before leaving this page.'
-      : 'Account email resent or queued.');
+    setMessage(res.email?.status === 'failed'
+      ? 'Account email failed. Please check SMTP settings or copy the fresh one-time instructions.'
+      : res.email?.status === 'preview'
+        ? 'Account email preview is available. Copy the fresh one-time instructions before leaving this page.'
+        : 'Account email resent.');
   }
 
   async function copyOneTimeCredentials() {
@@ -365,7 +369,9 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
     const missingCount = Array.isArray(res.missingInformation) ? res.missingInformation.length : 0;
     const emailStatus = res.email?.status ? ` Email status: ${res.email.status}.` : '';
     const followUp = missingCount ? ` Client follow-up required for ${missingCount} missing item${missingCount === 1 ? '' : 's'}.` : '';
-    setMessage(`Listing ${res.listing?.id || ''} created from WhatsApp submission.${emailStatus}${followUp}`);
+    const emailFailure = res.email?.status === 'failed' ? ' Please check SMTP settings or resend.' : '';
+    const emailPreview = res.email?.status === 'preview' ? ' Email preview is available because SMTP is not configured.' : '';
+    setMessage(`Listing ${res.listing?.id || ''} created from WhatsApp submission.${emailStatus}${followUp}${emailFailure}${emailPreview}`);
   }
 
   return (
@@ -483,10 +489,15 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
                 <Field label="Login status" value={current.accountCreation.activationStatus} />
                 <Field label="Credentials sent" value={formatDate(current.accountCreation.credentialsSentAt || '')} />
                 <Field label="Email recipient" value={current.accountCreation.emailRecipient || current.email} />
+                <Field label="Email sender" value={current.accountCreation.emailSender} />
+                <Field label="Last email sent" value={formatDate(current.accountCreation.lastEmailSentAt || '')} />
                 <div className="waDetailField">
                   <span>Email status</span>
                   <b><span className={emailPillClass(current.accountCreation.emailStatus)}>{[current.accountCreation.emailStatus || 'pending', current.accountCreation.emailProvider].filter(Boolean).join(' / ')}</span></b>
                 </div>
+                {current.accountCreation.emailError && (
+                  <Field label="Email error" value={current.accountCreation.emailError} />
+                )}
                 {current.accountCreation.clientFollowUpRequired && (
                   <div className="waDetailField">
                     <span>Follow-up</span>
@@ -565,6 +576,19 @@ export default function WhatsappUploadDetailAdmin({ submission }: { submission: 
                 <Field label="Linked account ID" value={current.listingCreation.accountId || current.accountCreation?.accountId} />
                 <Field label="Listing type" value={current.listingCreation.lastListingType} />
                 <Field label="Created listings" value={current.listingCreation.listingIds.join(', ')} />
+                <div className="waDetailField">
+                  <span>Listing email status</span>
+                  <b><span className={emailPillClass(current.listingCreation.emailStatus)}>{[current.listingCreation.emailStatus || 'not sent', current.listingCreation.emailProvider].filter(Boolean).join(' / ')}</span></b>
+                </div>
+                <Field label="Listing email recipient" value={current.listingCreation.emailRecipient} />
+                <Field label="Listing email sender" value={current.listingCreation.emailSender} />
+                <Field label="Last email sent" value={formatDate(current.listingCreation.lastEmailSentAt || '')} />
+                {current.listingCreation.clientFollowUpRequired && (
+                  <div className="waDetailField">
+                    <span>Listing follow-up</span>
+                    <b><span className="pill gold">Client follow-up required</span></b>
+                  </div>
+                )}
               </div>
               <div className="waActionRow">
                 <Link className="btn" href={`/admin/listings/${current.listingCreation.lastListingId}`}>Open Admin Listing</Link>

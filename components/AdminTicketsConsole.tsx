@@ -9,6 +9,13 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+function emailPillClass(status: string) {
+  const lower = String(status || '').toLowerCase();
+  if (lower === 'sent') return 'pill green';
+  if (lower === 'failed' || lower === 'preview') return 'pill gold';
+  return 'pill';
+}
+
 export default function AdminTicketsConsole({ initialTickets }: { initialTickets: any[] }) {
   const [tickets, setTickets] = useState(initialTickets);
   const [query, setQuery] = useState('');
@@ -55,7 +62,10 @@ export default function AdminTicketsConsole({ initialTickets }: { initialTickets
                 <p><b>Contact:</b> {ticket.contactName || '-'}</p>
                 <p><b>Email:</b> {ticket.email || '-'}</p>
                 <p><b>Mobile:</b> {ticket.mobile || '-'}</p>
+                <p><b>Email status:</b> <span className={emailPillClass(ticket.emailStatus)}>{ticket.emailStatus || 'not sent'}</span></p>
+                <p><b>Email sender:</b> {ticket.emailSender || '-'}</p>
               </div>
+              {ticket.emailError && <p className="notice slimNotice">{ticket.emailError}</p>}
               <p>{ticket.message}</p>
               <label>Status<select value={ticket.status} onChange={(event) => updateTicket(ticket.ticketId, { status: event.target.value, adminNote: ticket.adminNote })}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>
               <label>Internal admin note<textarea value={ticket.adminNote || ''} onChange={(event) => setTickets((rows) => rows.map((row) => row.ticketId === ticket.ticketId ? { ...row, adminNote: event.target.value } : row))} /></label>

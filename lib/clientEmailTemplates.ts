@@ -55,13 +55,19 @@ export function clientAccountListingCreatedEmail({
   const dashboardUrl = `${appBaseUrl()}/account`;
   const recipientName = user?.ownerName || user?.firmName || 'there';
   const credentialRows = [
-    row('Company', user?.firmName),
+    row('Client name', user?.ownerName),
+    row('Firm name', user?.firmName),
+    row('Account ID / User ID', user?.id),
     row('Dashboard URL', dashboardUrl),
     row('Login URL', loginUrl),
-    row('Username / User ID', user?.email || user?.primaryMobile || user?.id),
+    row('Username', user?.email || user?.primaryMobile || user?.id),
     row('Temporary password', temporaryPassword || 'Use your existing password or ask Talmech admin for a reset.'),
     row('Listing ID', listing?.id),
-    row('Listing', [listing?.metal, listing?.product, listing?.grade].filter(Boolean).join(' / ')),
+    row('Listing summary', [listing?.metal, listing?.product, listing?.grade, listing?.productForm || listing?.raw?.productForm].filter(Boolean).join(' / ')),
+    row('Quantity', [listing?.quantity, listing?.unit || listing?.raw?.quantityUnit].filter(Boolean).join(' ')),
+    row('Price', listing?.targetPrice || listing?.priceType || listing?.raw?.price || 'Price on request'),
+    row('Dispatch location', listing?.pickupAddress || listing?.raw?.dispatchLocation),
+    row('Delivery location', listing?.deliveryLocation || listing?.raw?.deliveryLocation),
   ].join('');
 
   const html = shell('Your Talmech workspace and listing are ready', `
@@ -69,27 +75,35 @@ export function clientAccountListingCreatedEmail({
     <p>Talmech admin created this workspace to help publish and manage your marketplace listing. Please sign in, review your details, and change the temporary password after first login.</p>
     <table style="border-collapse:collapse;width:100%;margin-top:16px">${credentialRows}</table>
     <p style="margin:18px 0"><a href="${escapeHtml(dashboardUrl)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;border-radius:999px;padding:12px 18px;font-weight:700">Open your dashboard</a></p>
-    <p>Please reply to this email or WhatsApp Talmech with 3 clear product images, stock proof, and any missing information listed below.</p>
+    <p>Please reply to this email or WhatsApp Talmech with 3 clear product pictures, stock proof, and any missing information listed below.</p>
     ${missingHtml(missingItems)}
     <p style="margin-top:20px"><b>Next steps</b><br/>1. Open your dashboard.<br/>2. Change your password.<br/>3. Confirm product, price, GST, dispatch, and certificate details.<br/>4. Share product photos if still pending.</p>
-    <p style="margin-top:20px">Regards,<br/><b>Talmech Trading Team</b><br/>Support: +91 7389642874</p>
+    <p style="margin-top:20px">Regards,<br/><b>Raghavendra Tiwari</b><br/>Talmech Trading<br/>Support: +91 7389642874</p>
   `);
 
   const text = [
     'Your Talmech workspace and listing are ready.',
     `Hello ${recipientName},`,
-    `Company: ${user?.firmName || '-'}`,
+    `Client name: ${user?.ownerName || '-'}`,
+    `Firm name: ${user?.firmName || '-'}`,
+    `Account ID/User ID: ${user?.id || '-'}`,
     `Dashboard: ${dashboardUrl}`,
     `Login: ${loginUrl}`,
-    `Username/User ID: ${user?.email || user?.primaryMobile || user?.id || '-'}`,
+    `Username: ${user?.email || user?.primaryMobile || user?.id || '-'}`,
     `Temporary password: ${temporaryPassword || 'Use your existing password or ask Talmech admin for a reset.'}`,
     `Listing ID: ${listing?.id || '-'}`,
-    `Listing: ${[listing?.metal, listing?.product, listing?.grade].filter(Boolean).join(' / ') || '-'}`,
+    `Listing: ${[listing?.metal, listing?.product, listing?.grade, listing?.productForm || listing?.raw?.productForm].filter(Boolean).join(' / ') || '-'}`,
+    `Quantity: ${[listing?.quantity, listing?.unit || listing?.raw?.quantityUnit].filter(Boolean).join(' ') || '-'}`,
+    `Price: ${listing?.targetPrice || listing?.priceType || listing?.raw?.price || 'Price on request'}`,
+    `Dispatch location: ${listing?.pickupAddress || listing?.raw?.dispatchLocation || '-'}`,
+    `Delivery location: ${listing?.deliveryLocation || listing?.raw?.deliveryLocation || '-'}`,
     'Change your password after first login.',
     missingItems.length ? 'Information still required:' : '',
     ...missingItems.map((item) => `- ${item.label}: ${item.message}`),
-    'Please share 3 clear product images if not already shared.',
-    'Talmech Trading Team | Support: +91 7389642874',
+    'Please share 3 clear product pictures if not already shared.',
+    'Regards,',
+    'Raghavendra Tiwari',
+    'Talmech Trading | Support: +91 7389642874',
   ].filter(Boolean).join('\n');
 
   return { subject: 'Your Talmech Trading workspace and listing are ready', html, text };
@@ -102,13 +116,16 @@ export function clientFollowUpRequiredEmail({ user, listing, missingItems }: { u
     <p>Your listing ${escapeHtml(listing?.id || '')} needs a few details before Talmech can complete verification and buyer outreach.</p>
     ${missingHtml(missingItems)}
     <p style="margin:18px 0"><a href="${escapeHtml(dashboardUrl)}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;border-radius:999px;padding:12px 18px;font-weight:700">Open your dashboard</a></p>
-    <p>Regards,<br/><b>Talmech Trading Team</b></p>
+    <p>Please share 3 clear product pictures if they are still pending.</p>
+    <p>Regards,<br/><b>Raghavendra Tiwari</b><br/>Talmech Trading<br/>Support: +91 7389642874</p>
   `);
   const text = [
     'Talmech listing follow-up required.',
     `Listing ID: ${listing?.id || '-'}`,
     ...missingItems.map((item) => `- ${item.label}: ${item.message}`),
     `Dashboard: ${dashboardUrl}`,
+    'Please share 3 clear product pictures if they are still pending.',
+    'Raghavendra Tiwari | Talmech Trading | Support: +91 7389642874',
   ].join('\n');
   return { subject: 'Talmech listing follow-up required', html, text };
 }

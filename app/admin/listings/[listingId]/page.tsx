@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import AdminListingClientEmailActions from '@/components/AdminListingClientEmailActions';
 import AdminListingStatusActions from '@/components/AdminListingStatusActions';
 import { generateListingStrategy } from '@/lib/listingIntelligence';
 import { productImagesFromListing } from '@/lib/listingImages';
@@ -28,6 +29,20 @@ export default async function AdminListingDetailPage({ params }: { params: { lis
   const raw = listing.raw && typeof listing.raw === 'object' ? listing.raw : {};
   const images = productImagesFromListing(listing);
   const strategy = generateListingStrategy(listing);
+  const notification = raw.clientNotification && typeof raw.clientNotification === 'object'
+    ? raw.clientNotification
+    : {
+        emailStatus: raw.clientNotificationStatus,
+        emailProvider: raw.clientNotificationProvider,
+        emailRecipient: raw.clientNotificationRecipient || raw.ownerEmail,
+        emailSender: raw.clientNotificationSender,
+        lastAttemptAt: raw.clientNotificationLastAttemptAt,
+        lastEmailSentAt: raw.clientNotificationLastEmailSentAt,
+        lastSentAt: raw.clientNotificationLastSentAt,
+        emailError: raw.clientNotificationEmailError || raw.clientNotificationError,
+        clientFollowUpRequired: raw.clientFollowUpRequired,
+      };
+  const missingInformation = Array.isArray(raw.missingInformation) ? raw.missingInformation : [];
 
   return (
     <main className="adminShell section">
@@ -95,6 +110,11 @@ export default async function AdminListingDetailPage({ params }: { params: { lis
           <h2>Technical summary</h2>
           <p>{listing.technicalSummary || '-'}</p>
         </section>
+        <AdminListingClientEmailActions
+          listingId={listing.id}
+          initialNotification={notification}
+          initialMissingInformation={missingInformation}
+        />
         <section className="waDetailPanel wide">
           <div className="sectionHead">
             <div>

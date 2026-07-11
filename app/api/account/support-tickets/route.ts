@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientSessionUser } from '@/lib/clientAuth';
 import { publicStorageError } from '@/lib/storageMode';
-import { createSupportTicket, listSupportTicketsForUser } from '@/lib/supportTicketStore';
+import { sendSupportTicketCreatedEmails } from '@/lib/supportTicketEmails';
+import { createSupportTicket, listSupportTicketsForUser, recordSupportTicketEmailStatus } from '@/lib/supportTicketStore';
 import { sanitizeMultiline, sanitizeString } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
       sanitizeMultiline(body.message, 2000),
       attachmentNote ? `Attachment note: ${attachmentNote}` : '',
     ].filter(Boolean).join('\n\n');
-    const ticket = await createSupportTicket({
+    let ticket = await createSupportTicket({
       ownerUserId: user.id,
       accountId: user.id,
       firmName: user.firmName || '',
@@ -38,6 +39,15 @@ export async function POST(req: NextRequest) {
       subject: sanitizeString(body.subject, 160),
       message,
     });
+    try {
+      const emailResults = await sendSupportTicketCreatedEmails(ticket);
+      for (const tracking of emailResults) {
+        const updated = await recordSupportTicketEmailStatus(ticket.ticketId, tracking);
+        if (updated) ticket = updated;
+      }
+    } catch (emailError) {
+      console.error('[Support ticket email error]', emailError);
+    }
     return NextResponse.json({ ok: true, ticket });
   } catch (error) {
     const storageError = publicStorageError(error);

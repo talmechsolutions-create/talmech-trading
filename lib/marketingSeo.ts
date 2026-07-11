@@ -122,8 +122,8 @@ export const apiRegistry: ApiRegistryItem[] = [
     owner: 'Payment',
   },
   {
-    name: 'Resend Email API',
-    env: 'RESEND_API_KEY / NOTIFICATION_FROM_EMAIL / ADMIN_NOTIFICATION_EMAIL',
+    name: 'Business Email Delivery',
+    env: 'EMAIL_PROVIDER / SMTP_HOST / SMTP_USER / SMTP_PASSWORD / NOTIFICATION_FROM_EMAIL / RESEND_API_KEY / ADMIN_NOTIFICATION_EMAIL',
     purpose: 'Lead confirmations, invoice emails, approval emails, vendor communication and campaign follow-up.',
     requiredFor: 'Transactional marketing and CRM follow-up',
     priority: 'Medium',

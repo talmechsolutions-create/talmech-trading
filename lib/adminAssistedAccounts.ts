@@ -3,6 +3,7 @@ import { findWhatsappUpload, updateWhatsappUploadAccountCreation } from '@/lib/w
 import { WhatsappAccountCreation, WhatsappUploadSubmission } from '@/lib/whatsappUploadTypes';
 import { createUserRegistration, findUser, listUsers, updateUserRegistrationRecord } from '@/lib/proDb';
 import { sendOrQueueEmail } from '@/lib/email';
+import { getBusinessEmailFrom } from '@/lib/emailConfig';
 import {
   isValidEmail,
   isValidGst,
@@ -193,14 +194,19 @@ async function findDuplicateAccount(email: string, mobile: string) {
 
 function accountEmailHtml({ user, submission, activationUrl: activateUrl, alreadyActivated, temporaryPassword }: AccountEmailOptions) {
   const loginUrl = `${appBaseUrl()}/signin`;
+  const dashboardUrl = `${appBaseUrl()}/account`;
   const rows = [
+    ['Client name', user.ownerName],
+    ['Account ID / User ID', user.id],
     ['Account type', user.accountType],
     ['Firm name', user.firmName],
     ['Registered mobile', user.primaryMobile],
     ['Registered email', user.email],
+    ['Dashboard URL', dashboardUrl],
     ['WhatsApp submission', submission.submissionId],
     ['Login URL', loginUrl],
     ['Temporary password', temporaryPassword || 'Use your existing password or request a fresh admin resend.'],
+    ['Product / requirement interest', user.tradingProducts],
   ];
 
   const activationBlock = temporaryPassword
@@ -222,8 +228,9 @@ function accountEmailHtml({ user, submission, activationUrl: activateUrl, alread
     </table>
     ${activationBlock}
     <p>For security, please review your business details after your first login.</p>
+    <p>Please reply to this email or WhatsApp Talmech with 3 clear product pictures, stock proof, GST, certificate, price, dispatch location, delivery location, grade, product form, or any missing details that need correction.</p>
     <p>If you did not request this account, please contact Talmech support immediately.</p>
-    <p>Regards,<br/><b>Talmech Trading Team</b></p>
+    <p>Regards,<br/><b>Raghavendra Tiwari</b><br/>Talmech Trading<br/>Support: +91 7389642874</p>
   </div>`;
 }
 
@@ -234,10 +241,17 @@ async function sendAccountEmail(options: AccountEmailOptions) {
     html: accountEmailHtml(options),
     text: [
       'Your Talmech Trading account has been created.',
+      `Client name: ${options.user.ownerName || '-'}`,
+      `Firm name: ${options.user.firmName || '-'}`,
+      `Account ID/User ID: ${options.user.id || '-'}`,
+      `Dashboard URL: ${appBaseUrl()}/account`,
       `Login URL: ${appBaseUrl()}/signin`,
       `Username/User ID: ${options.user.email || options.user.primaryMobile || options.user.id}`,
       options.temporaryPassword ? `Temporary password: ${options.temporaryPassword}` : '',
+      `Product/requirement interest: ${options.user.tradingProducts || '-'}`,
       'Change your password after first login.',
+      'Please share 3 clear product pictures, stock proof, GST, certificate, price, dispatch location, delivery location, grade, product form, or any missing details.',
+      'Raghavendra Tiwari | Talmech Trading | Support: +91 7389642874',
     ].filter(Boolean).join('\n'),
     leadId: options.submission.submissionId,
   });
@@ -245,6 +259,12 @@ async function sendAccountEmail(options: AccountEmailOptions) {
 
 function emailNeedsManualCopy(result: any) {
   return result?.status !== 'sent';
+}
+
+function normalizedEmailStatus(result: any): 'sent' | 'failed' | 'preview' {
+  if (result?.status === 'sent') return 'sent';
+  if (result?.status === 'preview') return 'preview';
+  return 'failed';
 }
 
 function accountCreationFromEmail(
@@ -256,10 +276,15 @@ function accountCreationFromEmail(
   notification: { type?: string; recipient?: string; clientFollowUpRequired?: boolean } = {}
 ): WhatsappAccountCreation {
   const now = new Date().toISOString();
-  const emailStatus = sanitizeString(emailResult?.status, 80) || 'skipped';
+  const emailStatus = normalizedEmailStatus(emailResult);
+  const emailSender = sanitizeString(emailResult?.from || getBusinessEmailFrom(), 254);
+  const emailProvider = sanitizeString(emailResult?.provider, 80);
+  const emailError = emailStatus === 'failed'
+    ? sanitizeMultiline(JSON.stringify(emailResult?.providerError || emailResult?.error || emailResult?.reason || ''), 500)
+    : '';
   return {
     ...(existing || {}),
-    status: emailStatus === 'sent' ? 'Email Sent' : emailStatus === 'skipped' ? 'Needs Follow-up' : 'Needs Follow-up',
+    status: emailStatus === 'sent' ? 'Email Sent' : 'Needs Follow-up',
     accountId: user.id,
     accountType: user.accountType,
     roleCategory: user.roleCategory,
@@ -274,12 +299,15 @@ function accountCreationFromEmail(
     credentialsSentAt: now,
     emailLastAttemptAt: now,
     emailStatus,
-    emailProvider: sanitizeString(emailResult?.provider, 80),
+    emailProvider,
     emailRecipient: sanitizeString(notification.recipient || user.email, 254).toLowerCase(),
+    emailSender,
+    lastEmailSentAt: emailStatus === 'sent' ? now : '',
+    emailError,
     notificationType: sanitizeString(notification.type || 'client_account_created', 80),
     clientFollowUpRequired: notification.clientFollowUpRequired === undefined ? existing?.clientFollowUpRequired : Boolean(notification.clientFollowUpRequired),
     emailPreviewAvailable: emailNeedsManualCopy(emailResult),
-    lastEmailError: sanitizeMultiline(JSON.stringify(emailResult?.data || emailResult?.providerError || ''), 500),
+    lastEmailError: emailError,
     adminNote: sanitizeMultiline(adminNote || existing?.adminNote, 800),
   };
 }
@@ -290,6 +318,8 @@ function accountManualInstructions(user: any, submission: WhatsappUploadSubmissi
     '',
     'Your Talmech Trading account has been created by the Talmech admin team from the details shared through WhatsApp.',
     `Company: ${user.firmName || '-'}`,
+    `Account ID/User ID: ${user.id || '-'}`,
+    `Dashboard URL: ${appBaseUrl()}/account`,
     `Login URL: ${appBaseUrl()}/signin`,
     `Username/User ID: ${user.email || user.primaryMobile || user.id}`,
     tempPassword ? `Temporary password: ${tempPassword}` : 'Password: use your current password or request a fresh Talmech admin resend.',
@@ -299,7 +329,8 @@ function accountManualInstructions(user: any, submission: WhatsappUploadSubmissi
     'Reply to Talmech support if any product, GST, certificate, price, stock, or dispatch information needs correction.',
     '',
     'Regards,',
-    'Talmech Trading Team',
+    'Raghavendra Tiwari',
+    'Talmech Trading | Support: +91 7389642874',
   ].join('\n');
 }
 
@@ -403,9 +434,18 @@ export async function createAdminAssistedAccount(submissionId: string, input: Ad
     credentialsSentAt: accountCreation.credentialsSentAt,
     emailDeliveryStatus: accountCreation.emailStatus,
     emailProvider: accountCreation.emailProvider,
-    clientNotificationLastSentAt: accountCreation.credentialsSentAt,
+    emailSender: accountCreation.emailSender,
+    emailRecipient: accountCreation.emailRecipient,
+    emailStatus: accountCreation.emailStatus,
+    lastEmailSentAt: accountCreation.lastEmailSentAt,
+    emailError: accountCreation.emailError,
+    clientNotificationLastSentAt: accountCreation.lastEmailSentAt,
+    clientNotificationLastEmailSentAt: accountCreation.lastEmailSentAt,
     clientNotificationStatus: accountCreation.emailStatus,
     clientNotificationRecipient: user.email,
+    clientNotificationSender: accountCreation.emailSender,
+    clientNotificationProvider: accountCreation.emailProvider,
+    clientNotificationEmailError: accountCreation.emailError,
   });
 
   return {
@@ -478,9 +518,18 @@ export async function resendAdminAssistedAccountEmail(submissionId: string) {
     credentialsSentAt: accountCreation.credentialsSentAt,
     emailDeliveryStatus: accountCreation.emailStatus,
     emailProvider: accountCreation.emailProvider,
-    clientNotificationLastSentAt: accountCreation.credentialsSentAt,
+    emailSender: accountCreation.emailSender,
+    emailRecipient: accountCreation.emailRecipient,
+    emailStatus: accountCreation.emailStatus,
+    lastEmailSentAt: accountCreation.lastEmailSentAt,
+    emailError: accountCreation.emailError,
+    clientNotificationLastSentAt: accountCreation.lastEmailSentAt,
+    clientNotificationLastEmailSentAt: accountCreation.lastEmailSentAt,
     clientNotificationStatus: accountCreation.emailStatus,
     clientNotificationRecipient: user.email,
+    clientNotificationSender: accountCreation.emailSender,
+    clientNotificationProvider: accountCreation.emailProvider,
+    clientNotificationEmailError: accountCreation.emailError,
   });
 
   return {

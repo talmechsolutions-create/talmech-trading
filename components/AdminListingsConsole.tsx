@@ -72,8 +72,11 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
           emailStatus: r.clientNotificationStatus,
           emailProvider: r.clientNotificationProvider,
           emailRecipient: r.clientNotificationRecipient || r.ownerEmail,
+          emailSender: r.clientNotificationSender,
           lastAttemptAt: r.clientNotificationLastAttemptAt,
+          lastEmailSentAt: r.clientNotificationLastEmailSentAt,
           lastSentAt: r.clientNotificationLastSentAt,
+          emailError: r.clientNotificationEmailError || r.clientNotificationError,
           clientFollowUpRequired: r.clientFollowUpRequired,
         };
   }
@@ -90,7 +93,7 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
   function emailStatusClass(row: any) {
     const status = String(notification(row).emailStatus || '').toLowerCase();
     if (status === 'sent') return 'pill green';
-    if (status === 'failed' || status.includes('error')) return 'pill gold';
+    if (status === 'failed' || status === 'preview' || status.includes('error')) return 'pill gold';
     return 'pill';
   }
 
@@ -116,8 +119,13 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
         clientNotification: tracking,
         clientNotificationStatus: tracking.emailStatus || res.email?.status,
         clientNotificationRecipient: tracking.emailRecipient,
+        clientNotificationSender: tracking.emailSender,
+        clientNotificationProvider: tracking.emailProvider || res.email?.provider,
         clientNotificationLastAttemptAt: tracking.lastAttemptAt,
+        clientNotificationLastEmailSentAt: tracking.lastEmailSentAt,
         clientNotificationLastSentAt: tracking.lastSentAt,
+        clientNotificationEmailError: tracking.emailError,
+        clientNotificationError: tracking.errorMessage,
         missingInformation: missing,
         clientFollowUpRequired: missing.length > 0 || tracking.emailStatus !== 'sent',
       },
@@ -125,7 +133,9 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
     if (res.manualCopy) setManualCopy({ listingId: row.id, ...res.manualCopy });
     setMessage(res.email?.status === 'sent'
       ? `Client email sent for ${row.id}.`
-      : `Client email could not be confirmed for ${row.id}. Copy the one-time instructions if needed.`);
+      : res.email?.status === 'preview'
+        ? `Client email preview is available for ${row.id}. Configure SMTP or copy the instructions.`
+        : `Client email failed for ${row.id}. Check SMTP settings or copy the instructions.`);
   }
 
   async function copyManualInstructions() {
@@ -213,7 +223,9 @@ export default function AdminListingsConsole({ initialListings, initialStrategie
                       <span className={emailStatusClass(listing)}>{note.emailStatus || 'not sent'}</span>
                       {followUpRequired && <span className="pill gold followUpPill">Client follow-up required</span>}
                       <p className="waAccountMini">{note.emailRecipient || r.ownerEmail || 'No recipient email'}</p>
+                      {note.emailSender && <p className="waAccountMini">From: {note.emailSender}</p>}
                       {missing.length > 0 && <p className="waAccountMini">{missing.slice(0, 2).map((item: any) => item.label || item.message || String(item)).join(' / ')}</p>}
+                      {note.emailError && <p className="waAccountMini">{note.emailError}</p>}
                     </td>
                     <td>{formatDate(listing.createdAt)}</td>
                     <td>

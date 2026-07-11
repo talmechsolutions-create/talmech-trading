@@ -62,6 +62,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       prefix: 'LIST-WA',
     });
 
+    const email = account ? await sendClientListingNotification({
+      user: account,
+      listing,
+      notificationType: 'client_account_listing_created',
+    }) : null;
+    const tracking: any = email?.tracking || {};
+
     const listingIds = [...existingIds, listing.id];
     const now = new Date().toISOString();
     const updatedSubmission = await updateWhatsappUploadListingCreation(submission.submissionId, {
@@ -70,18 +77,19 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
       accountId: account?.id || accountId,
       lastListingId: listing.id,
       lastListingType: sanitizeString(input.listingType || input.type, 80) || listing.type,
+      emailStatus: tracking.emailStatus || email?.status || '',
+      emailProvider: tracking.emailProvider || email?.provider || '',
+      emailRecipient: tracking.emailRecipient || account?.email || input.ownerEmail || '',
+      emailSender: tracking.emailSender || '',
+      lastEmailSentAt: tracking.lastEmailSentAt || '',
+      emailError: tracking.emailError || tracking.errorMessage || '',
+      clientFollowUpRequired: Boolean(tracking.clientFollowUpRequired || email?.missingInformation?.length),
       createdAt: submission.listingCreation?.createdAt || now,
       updatedAt: now,
     }, {
       status: 'Converted',
       note: `Marketplace listing ${listing.id} created from WhatsApp submission.`,
     });
-
-    const email = account ? await sendClientListingNotification({
-      user: account,
-      listing,
-      notificationType: 'client_account_listing_created',
-    }) : null;
 
     return NextResponse.json({
       ok: true,
