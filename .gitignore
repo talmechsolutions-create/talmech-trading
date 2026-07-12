@@ -4,6 +4,7 @@ out/
 dist/
 build/
 coverage/
+audit-output/
 
 .env
 .env.local
@@ -16,6 +17,7 @@ coverage/
 tsconfig.tsbuildinfo
 
 data/*.json
+data/**/*.json
 
 .vercel/
 .netlify/
@@ -23,6 +25,13 @@ data/*.json
 package-lock.backup.json
 *.zip
 *.mp4
+*.pem
+*.key
+*.p8
+*.p12
+*.crt
+*.sqlite
+*.db
 
 public/*.mp4
 public/videos/*.mp4

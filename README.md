@@ -2,6 +2,41 @@
 
 Public metal marketplace + protected internal admin/CRM system.
 
+## Live project source of truth
+
+This folder is the live Talmech Trading project:
+
+```text
+C:\new_project\talmech-trading-public-marketplace-final\talmech-trading-marketplace
+```
+
+Build, test, deploy, and push only from this folder. Do not build or edit the parent folder:
+
+```text
+C:\new_project\talmech-trading-public-marketplace-final
+```
+
+The expected Git remote is:
+
+```text
+https://github.com/talmechsolutions-create/talmech-trading.git
+```
+
+Before deployment or handoff, run:
+
+```bash
+npm run verify:project
+npm run security:preflight
+```
+
+Never share the raw project folder. It can contain local `.env`, `.vercel`, `.next`, `node_modules`, ignored JSON data, or generated files. Use this clean archive command for external security/SEO audits:
+
+```bash
+npm run zip:audit
+```
+
+If `.env`, `.env.local`, database URLs, SMTP passwords, Razorpay secrets, API keys, private keys, or Vercel files were ever shared, rotate those secrets immediately in the provider dashboards and Vercel environment variables.
+
 ## What is new in this build
 
 - Public admin button removed from website navigation.

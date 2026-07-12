@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { csv } from '@/lib/marketplaceStore';
 import { createUserRegistration, findUser, listUsers, updateUserRegistrationStatus } from '@/lib/proDb';
+import { apiError } from '@/lib/security/apiResponse';
+import { detectHoneypot, formFillTimeOk, verifyTurnstileToken } from '@/lib/security/inputSanitizer';
+import { getClientIp, rateLimitResponse } from '@/lib/security/rateLimit';
 import { getStorageMode, publicStorageError } from '@/lib/storageMode';
 import {
   collectMissing,
@@ -101,7 +104,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimitResponse(req, { keyPrefix: 'user-registration', limit: 10, windowMs: 30 * 60 * 1000 });
+  if (limited) return limited;
+
   const body = await req.json().catch(() => ({}));
+  if (detectHoneypot(body) || !formFillTimeOk(body)) return apiError('SPAM_CHECK_FAILED', 'Unable to accept this registration.', 400);
+  const captcha = await verifyTurnstileToken((body as any).turnstileToken || (body as any)['cf-turnstile-response'], getClientIp(req));
+  if (!captcha.ok) return apiError('CAPTCHA_FAILED', captcha.error, 400);
 
   if (jsonSizeBytes(body) > 1_500_000) {
     return NextResponse.json(

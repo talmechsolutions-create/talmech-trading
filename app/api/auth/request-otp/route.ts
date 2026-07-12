@@ -5,17 +5,24 @@ import {
   isOtpProviderConfigured,
   normalizeOtpContact,
 } from '@/lib/otpStore';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 import { sanitizeString } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const ipLimit = await rateLimitResponse(req, { keyPrefix: 'otp-request-ip', limit: 20, windowMs: 15 * 60 * 1000 });
+  if (ipLimit) return ipLimit;
+
   const body = await req.json().catch(() => ({}));
   const normalized = normalizeOtpContact(body.contact || body.mobile || body.email, body.channel);
 
   if (!normalized.ok) {
     return NextResponse.json({ ok: false, error: normalized.error }, { status: 400 });
   }
+
+  const contactLimit = await rateLimitResponse(req, { keyPrefix: 'otp-request-contact', identifier: normalized.contact, limit: 5, windowMs: 15 * 60 * 1000 });
+  if (contactLimit) return contactLimit;
 
   const purpose = sanitizeString(body.purpose || 'onboarding', 60) || 'onboarding';
 

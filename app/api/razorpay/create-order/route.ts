@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { createRazorpayOrder } from '@/lib/payments';
 import { findPriceLock, updatePriceLock } from '@/lib/proDb';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const limited = await rateLimitResponse(req, { keyPrefix: 'razorpay-create-order', limit: 10, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   try {
     const body = await req.json().catch(() => ({}));
     const lockId = body.lockId;

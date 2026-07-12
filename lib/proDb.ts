@@ -1,14 +1,11 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
-import { getDatabaseUrl, hasDatabaseUrl } from '@/lib/databaseEnv';
+import { ensurePrismaDatabaseEnv, hasDatabaseUrl } from '@/lib/databaseEnv';
 import { leadsFile, listingsFile, readJsonArray, writeJsonArray } from '@/lib/marketplaceStore';
 import { isProduction, persistentStorageUnavailable, requirePersistentStorage } from '@/lib/storageMode';
 
-const configuredDatabaseUrl = getDatabaseUrl();
-if (configuredDatabaseUrl && !(process.env.DATABASE_POSTGRES_URL || '').trim()) {
-  process.env.DATABASE_POSTGRES_URL = configuredDatabaseUrl;
-}
+ensurePrismaDatabaseEnv();
 
 const g = globalThis as unknown as { prisma?: PrismaClient };
 export const prisma = g.prisma || new PrismaClient();

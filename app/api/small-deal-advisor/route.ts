@@ -1,4 +1,5 @@
 import {NextResponse} from 'next/server';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 
 type Req={budget:number;metal:string;product:string;city:string;state:string;dealModel:string;service:string};
 const money=(n:number)=>`₹${Math.round(n).toLocaleString('en-IN')}`;
@@ -26,6 +27,9 @@ function builtInPlan(input:Req){
 }
 
 export async function POST(req:Request){
+  const limited = await rateLimitResponse(req, { keyPrefix: 'small-deal-advisor', limit: 12, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   const input=(await req.json()) as Req;
   const fallback=builtInPlan(input);
   if(!process.env.OPENAI_API_KEY){return NextResponse.json({source:'built-in',plan:fallback});}

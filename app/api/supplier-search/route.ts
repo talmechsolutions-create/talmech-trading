@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {buildSupplierQueries, supplierSegments} from '@/lib/supplierKnowledge';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 
 type SupplierResult = {
   name: string;
@@ -71,6 +72,9 @@ async function searchSerpApiGoogleMaps(query: string): Promise<SupplierResult[]>
 }
 
 export async function POST(request: NextRequest) {
+  const limited = await rateLimitResponse(request, { keyPrefix: 'supplier-search', limit: 20, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   try {
     const body = await request.json();
     const metal = String(body.metal || 'Steel');

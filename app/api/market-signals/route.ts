@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {metalProfiles} from '@/lib/metalKnowledge';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 
 type Signal = {
   metal: string;
@@ -49,6 +50,9 @@ async function serpNewsSignal(query: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimitResponse(req, { keyPrefix: 'market-signals', limit: 20, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   try {
     const body = await req.json();
     const region = String(body.region || 'India');

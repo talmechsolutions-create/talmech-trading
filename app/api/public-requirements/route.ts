@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { csv, safePublicListing } from '@/lib/marketplaceStore';
 import { leadEmailHtml, sendOrQueueEmail } from '@/lib/email';
 import { clearLeads, createLead, createListing, listLeads } from '@/lib/proDb';
+import { apiError } from '@/lib/security/apiResponse';
+import { detectHoneypot, formFillTimeOk, verifyTurnstileToken } from '@/lib/security/inputSanitizer';
+import { getClientIp, rateLimitResponse } from '@/lib/security/rateLimit';
 import { getStorageMode, publicStorageError } from '@/lib/storageMode';
 import {
   collectMissing,
@@ -24,7 +27,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ leads, updatedAt: new Date().toISOString(), storage: getStorageMode() });
 }
 export async function POST(req: NextRequest) {
+  const limited = await rateLimitResponse(req, { keyPrefix: 'public-requirements', limit: 16, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   const body = await req.json().catch(() => ({}));
+  if (detectHoneypot(body) || !formFillTimeOk(body)) return apiError('SPAM_CHECK_FAILED', 'Unable to accept this submission.', 400);
+  const captcha = await verifyTurnstileToken((body as any).turnstileToken || (body as any)['cf-turnstile-response'], getClientIp(req));
+  if (!captcha.ok) return apiError('CAPTCHA_FAILED', captcha.error, 400);
 
   if (jsonSizeBytes(body) > 1_500_000) {
     return NextResponse.json({ ok: false, error: 'Requirement payload is too large.' }, { status: 413 });

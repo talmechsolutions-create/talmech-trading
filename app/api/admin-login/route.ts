@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { ADMIN_COOKIE, ADMIN_MAX_AGE_SECONDS, adminConfigError, adminPassword, adminUsername, clearFailedLogin, clientKey, createAdminToken, isLockedOut, isWeakAdminConfig, recordFailedLogin, safeEqual } from '@/lib/adminSecurity';
+import { createAdminMfaChallenge, isAdminMfaEnabled, verifyAdminMfaChallenge } from '@/lib/security/adminMfa';
+import { auditAdminAction } from '@/lib/security/auditLog';
+import { apiError, apiOk } from '@/lib/security/apiResponse';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
+  const limited = await rateLimitResponse(req, { keyPrefix: 'admin-login', limit: 8, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   const configError = adminConfigError();
-  if (configError) return NextResponse.json({ ok: false, error: configError }, { status: 500 });
+  if (configError) return apiError('ADMIN_CONFIG_ERROR', configError, 500);
 
   const key = clientKey(req);
   if (isLockedOut(key)) {
-    return NextResponse.json({ ok: false, error: 'Too many failed attempts. Try again later.' }, { status: 429 });
+    return apiError('ADMIN_LOCKED_OUT', 'Too many failed attempts. Try again later.', 429);
   }
 
   const body = await req.json().catch(() => ({}));
@@ -19,10 +26,36 @@ export async function POST(req: Request) {
   const valid = safeEqual(username, adminUsername()) && safeEqual(password, adminPassword());
   if (!valid) {
     recordFailedLogin(key);
-    return NextResponse.json({ ok: false, error: 'Invalid admin username or password.' }, { status: 401 });
+    await auditAdminAction({ actor: username || 'unknown', action: 'ADMIN_LOGIN_FAILED', entity: 'AdminSession', note: `ip:${key}` });
+    return apiError('ADMIN_LOGIN_FAILED', 'Invalid admin username or password.', 401);
+  }
+
+  if (isAdminMfaEnabled()) {
+    const otp = String(body.otp || '');
+    const challengeId = String(body.challengeId || '');
+    if (challengeId || otp) {
+      const verified = verifyAdminMfaChallenge(challengeId, otp, key);
+      if (!verified.ok) {
+        recordFailedLogin(key);
+        await auditAdminAction({ actor: username || adminUsername(), action: 'ADMIN_MFA_FAILED', entity: 'AdminSession', note: verified.error });
+        return apiError('ADMIN_MFA_FAILED', verified.error, 401);
+      }
+    } else {
+      const challenge = await createAdminMfaChallenge(key);
+      if (!challenge.ok) return apiError('ADMIN_MFA_NOT_CONFIGURED', challenge.error, 500);
+      await auditAdminAction({ actor: username || adminUsername(), action: 'ADMIN_MFA_CHALLENGE_CREATED', entity: 'AdminSession', note: `ip:${key}` });
+      return apiOk({
+        mfaRequired: true,
+        challengeId: challenge.challengeId,
+        expiresAt: challenge.expiresAt,
+        delivery: challenge.delivery,
+        developmentOnlyOtp: challenge.developmentOnlyOtp,
+      });
+    }
   }
 
   clearFailedLogin(key);
+  await auditAdminAction({ actor: adminUsername(), action: 'ADMIN_LOGIN_SUCCESS', entity: 'AdminSession', note: `ip:${key}` });
   const res = NextResponse.json({ ok: true, weakConfig: isWeakAdminConfig() });
   res.cookies.set(ADMIN_COOKIE, createAdminToken(), {
     httpOnly: true,

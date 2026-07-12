@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/adminSecurity';
 import { resendAdminAssistedAccountEmail } from '@/lib/adminAssistedAccounts';
+import { auditAdminAction } from '@/lib/security/auditLog';
 import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
 
   try {
     const result = await resendAdminAssistedAccountEmail(params.submissionId);
+    if (result.ok) {
+      await auditAdminAction({
+        action: 'ADMIN_RESEND_ACCOUNT_EMAIL',
+        entity: 'WhatsappUpload',
+        entityId: params.submissionId,
+      });
+    }
     return NextResponse.json(result, { status: result.ok ? 200 : result.status || 400 });
   } catch (error) {
     const storageError = publicStorageError(error);

@@ -15,3 +15,16 @@ export function getDatabaseUrl() {
 export function hasDatabaseUrl() {
   return Boolean(getDatabaseUrl());
 }
+
+export function ensurePrismaDatabaseEnv() {
+  const value = getDatabaseUrl();
+  if (value && !(process.env.DATABASE_POSTGRES_URL || '').trim()) {
+    process.env.DATABASE_POSTGRES_URL = value;
+  }
+  return value;
+}
+
+export function productionDatabaseError() {
+  if (process.env.NODE_ENV !== 'production' || hasDatabaseUrl()) return '';
+  return 'Production database is not configured. Set DATABASE_POSTGRES_URL, DATABASE_URL, or DATABASE_PRISMA_DATABASE_URL.';
+}

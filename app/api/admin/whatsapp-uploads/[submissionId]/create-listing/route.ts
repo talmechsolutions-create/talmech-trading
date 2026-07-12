@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/adminSecurity';
 import { sendClientListingNotification } from '@/lib/clientNotifications';
 import { findUser } from '@/lib/proDb';
+import { auditAdminAction } from '@/lib/security/auditLog';
 import { publicStorageError } from '@/lib/storageMode';
 import { findWhatsappUpload, updateWhatsappUploadListingCreation } from '@/lib/whatsappUploadStore';
 import { createWorkspaceListing, listingInputFromWhatsapp } from '@/lib/workspaceListings';
@@ -89,6 +90,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     }, {
       status: 'Converted',
       note: `Marketplace listing ${listing.id} created from WhatsApp submission.`,
+    });
+
+    await auditAdminAction({
+      action: 'ADMIN_CREATE_LISTING',
+      entity: 'MarketplaceListing',
+      entityId: listing.id,
+      note: `whatsapp:${submission.submissionId}`,
     });
 
     return NextResponse.json({

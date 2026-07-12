@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/adminSecurity';
 import { createManualAdminClientListing } from '@/lib/manualAdminListing';
+import { auditAdminAction } from '@/lib/security/auditLog';
 import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,13 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   try {
     const result = await createManualAdminClientListing(body);
+    if (result.ok) {
+      await auditAdminAction({
+        action: 'ADMIN_MANUAL_ACCOUNT_LISTING_CREATE',
+        entity: 'ManualListing',
+        entityId: (result as any).listing?.id || (result as any).account?.id || '',
+      });
+    }
     return NextResponse.json(result, { status: result.ok ? 200 : result.status || 400 });
   } catch (error: any) {
     const storageError = publicStorageError(error);

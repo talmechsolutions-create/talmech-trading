@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/adminSecurity';
+import { auditAdminAction } from '@/lib/security/auditLog';
 import { publicStorageError } from '@/lib/storageMode';
 import { sendSupportTicketUpdateEmail } from '@/lib/supportTicketEmails';
 import { recordSupportTicketEmailStatus, updateSupportTicket } from '@/lib/supportTicketStore';
@@ -32,6 +33,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { ticketId: 
         console.error('[Support ticket email error]', emailError);
       }
     }
+    await auditAdminAction({
+      action: 'ADMIN_SUPPORT_TICKET_UPDATE',
+      entity: 'SupportTicket',
+      entityId: params.ticketId,
+      note: `status:${sanitizeString(body.status, 60)}`,
+    });
     return NextResponse.json({ ok: true, ticket });
   } catch (error) {
     const storageError = publicStorageError(error);

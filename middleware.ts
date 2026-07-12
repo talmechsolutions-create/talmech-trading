@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { applySecurityHeaders, isPrivatePath } from '@/lib/security/securityHeaders';
 
 const COOKIE = 'talmech_admin_session';
 const maxAgeMs = 60 * 60 * 10 * 1000;
@@ -89,14 +90,21 @@ function isProtectedApi(req: NextRequest) {
   return false;
 }
 
-function securityHeaders(res: NextResponse, noindex = false) {
-  res.headers.set('X-Frame-Options', 'DENY');
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
-  res.headers.set('X-DNS-Prefetch-Control', 'on');
-  res.headers.set('X-Robots-Tag', noindex ? 'noindex, nofollow, noarchive' : 'index, follow');
-  return res;
+function securityHeaders(req: NextRequest, res: NextResponse, noindex = false) {
+  return applySecurityHeaders(res, { noindex, req });
+}
+
+function isMutating(req: NextRequest) {
+  return ['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method.toUpperCase());
+}
+
+function sameOrigin(req: NextRequest) {
+  const origin = req.headers.get('origin');
+  const referer = req.headers.get('referer');
+  const site = req.nextUrl.origin;
+  if (origin) return origin === site;
+  if (referer) return referer.startsWith(`${site}/`);
+  return process.env.NODE_ENV !== 'production';
 }
 
 export async function middleware(req: NextRequest) {
@@ -104,19 +112,33 @@ export async function middleware(req: NextRequest) {
   const isAdminLogin = pathname === '/admin-login' || pathname.startsWith('/api/admin-session') || pathname.startsWith('/api/admin-login');
   const protectedPage = protectedPagePrefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const protectedApi = isProtectedApi(req);
+  const noindex = protectedPage || protectedApi || isPrivatePath(pathname);
 
-  if (isAdminLogin) return securityHeaders(NextResponse.next(), true);
-  if (!protectedPage && !protectedApi) return securityHeaders(NextResponse.next());
+  if (isAdminLogin) return securityHeaders(req, NextResponse.next(), true);
+  if (!protectedPage && !protectedApi) return securityHeaders(req, NextResponse.next(), noindex);
 
   if (await hasAdminSession(req)) {
-    return securityHeaders(NextResponse.next(), protectedPage || protectedApi);
+    if (protectedApi && isMutating(req) && !sameOrigin(req)) {
+      return securityHeaders(
+        req,
+        NextResponse.json({ ok: false, code: 'CSRF_CHECK_FAILED', message: 'Security token check failed.' }, { status: 403 }),
+        true
+      );
+    }
+    return securityHeaders(req, NextResponse.next(), true);
   }
 
-  if (protectedApi) return securityHeaders(NextResponse.json({ error: 'Admin authentication required' }, { status: 401 }), true);
+  if (protectedApi) {
+    return securityHeaders(
+      req,
+      NextResponse.json({ ok: false, code: 'ADMIN_AUTH_REQUIRED', message: 'Admin authentication required.' }, { status: 401 }),
+      true
+    );
+  }
   const loginUrl = req.nextUrl.clone();
   loginUrl.pathname = '/admin-login';
   loginUrl.searchParams.set('next', pathname);
-  return securityHeaders(NextResponse.redirect(loginUrl), true);
+  return securityHeaders(req, NextResponse.redirect(loginUrl), true);
 }
 
 export const config = { matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)'] };

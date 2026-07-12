@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { marketingEventsFile, readJsonArray, writeJsonArray } from '@/lib/marketingSeo';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +35,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const limited = await rateLimitResponse(req, { keyPrefix: 'marketing-events', limit: 120, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   const raw = await req.text().catch(() => '');
   if (raw.length > 20_000) return NextResponse.json({ ok: false, error: 'Event payload too large.' }, { status: 413 });
   const body = raw ? JSON.parse(raw) : {};

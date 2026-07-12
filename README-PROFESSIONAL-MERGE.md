@@ -66,7 +66,7 @@ If `DATABASE_URL` is blank, the platform continues using local JSON fallback in 
 For production, use Supabase or Neon PostgreSQL and set:
 
 ```env
-DATABASE_URL="postgresql://..."
+DATABASE_URL=""
 ```
 
 Then run:

@@ -4,6 +4,7 @@ import { ADMIN_COOKIE, verifyAdminToken } from '@/lib/adminSecurity';
 import { hashAdminAssistedPassword } from '@/lib/adminAssistedAccounts';
 import { sendClientListingNotification } from '@/lib/clientNotifications';
 import { findListing, findUser, updateUserRegistrationRecord } from '@/lib/proDb';
+import { auditAdminAction } from '@/lib/security/auditLog';
 import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
@@ -45,6 +46,13 @@ export async function POST(req: NextRequest, { params }: { params: { listingId: 
       listing,
       temporaryPassword: password,
       notificationType: password ? 'client_account_listing_created' : 'client_follow_up_required',
+    });
+
+    await auditAdminAction({
+      action: 'ADMIN_RESEND_CLIENT_EMAIL',
+      entity: 'MarketplaceListing',
+      entityId: params.listingId,
+      note: `status:${email.status};provider:${email.provider}`,
     });
 
     return NextResponse.json({

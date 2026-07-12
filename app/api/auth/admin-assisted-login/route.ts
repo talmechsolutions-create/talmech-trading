@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { clientKey } from '@/lib/adminSecurity';
 import { loginAdminAssistedAccount } from '@/lib/adminAssistedAccounts';
 import { setClientSessionCookie } from '@/lib/clientAuth';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,9 @@ function clearFailure(key: string) {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimitResponse(req, { keyPrefix: 'admin-assisted-login', limit: 12, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   const key = clientKey(req);
   if (locked(key)) {
     return NextResponse.json({ ok: false, error: 'Too many failed login attempts. Try again later.' }, { status: 429 });

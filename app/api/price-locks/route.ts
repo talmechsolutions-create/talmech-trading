@@ -4,6 +4,7 @@ import { calculateDealPricing } from '@/lib/pricing';
 import { createPriceLock, listPriceLocks, updatePriceLock, listLogisticsProviders } from '@/lib/proDb';
 import { selectDefaultLogisticsProvider, estimateProviderVehicleCost } from '@/lib/logistics';
 import { getOpenRouteServiceRoute } from '@/lib/routeService';
+import { rateLimitResponse } from '@/lib/security/rateLimit';
 import { getStorageMode, publicStorageError } from '@/lib/storageMode';
 import {
   isValidEmail,
@@ -87,6 +88,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = await rateLimitResponse(req, { keyPrefix: 'price-locks', limit: 12, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   const body = await req.json().catch(() => ({}));
 
   if (jsonSizeBytes(body) > 500_000) {

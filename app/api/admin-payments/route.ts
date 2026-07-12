@@ -10,6 +10,7 @@ import {
   updateAdminPayout,
 } from '@/lib/proDb';
 import { csv } from '@/lib/marketplaceStore';
+import { auditAdminAction } from '@/lib/security/auditLog';
 import { publicStorageError } from '@/lib/storageMode';
 
 export const dynamic = 'force-dynamic';
@@ -132,6 +133,13 @@ export async function POST(req: NextRequest) {
         raw: { payout },
       });
 
+      await auditAdminAction({
+        action: 'ADMIN_PAYOUT_CREATE',
+        entity: 'AdminPayout',
+        entityId: payout.id,
+        note: `lock:${payout.lockId};invoice:${invoice.id}`,
+      });
+
       return NextResponse.json({ ok: true, payout, invoice });
     } catch (error) {
       const storageError = publicStorageError(error);
@@ -151,6 +159,14 @@ export async function PATCH(req: NextRequest) {
   if (patch.status === 'PAID_COMPLETED' && !patch.paidAt) patch.paidAt = new Date().toISOString();
   try {
     const payout = await updateAdminPayout(id, patch);
+    if (payout) {
+      await auditAdminAction({
+        action: 'ADMIN_PAYOUT_UPDATE',
+        entity: 'AdminPayout',
+        entityId: id,
+        note: `status:${patch.status || ''}`,
+      });
+    }
     return NextResponse.json({ ok: Boolean(payout), payout });
   } catch (error) {
     const storageError = publicStorageError(error);

@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createCrmLead } from '@/lib/proDb';
+import { apiError } from '@/lib/security/apiResponse';
+import { detectHoneypot, formFillTimeOk, verifyTurnstileToken } from '@/lib/security/inputSanitizer';
+import { getClientIp, rateLimitResponse } from '@/lib/security/rateLimit';
 import { publicStorageError } from '@/lib/storageMode';
 import {
   isValidEmail,
@@ -12,7 +15,14 @@ import {
 } from '@/lib/validation';
 export const dynamic = 'force-dynamic';
 export async function POST(req:Request){
+  const limited = await rateLimitResponse(req, { keyPrefix: 'public-leads', limit: 20, windowMs: 15 * 60 * 1000 });
+  if (limited) return limited;
+
   const body=await req.json().catch(()=>({}));
+  if (detectHoneypot(body) || !formFillTimeOk(body)) return apiError('SPAM_CHECK_FAILED', 'Unable to accept this submission.', 400);
+  const captcha = await verifyTurnstileToken((body as any).turnstileToken || (body as any)['cf-turnstile-response'], getClientIp(req));
+  if (!captcha.ok) return apiError('CAPTCHA_FAILED', captcha.error, 400);
+
   if (body.email && !isValidEmail(body.email)) return NextResponse.json({success:false,error:'Enter a valid email address.'},{status:400});
   if (body.phone && !isValidIndianMobile(body.phone)) return NextResponse.json({success:false,error:'Enter a valid Indian mobile number.'},{status:400});
   try {

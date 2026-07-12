@@ -4,9 +4,10 @@ import PublicHeader from '@/components/PublicHeader';
 import FloatingContact from '@/components/FloatingContact';
 import RoleGate from '@/components/RoleGate';
 import MarketingTracker from '@/components/MarketingTracker';
+import { organizationJsonLd, siteSeoConfig, websiteJsonLd } from '@/lib/seo/siteSeoConfig';
 import './globals.css';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://talmech-trading.vercel.app';
+const siteUrl = siteSeoConfig.baseUrl;
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -17,9 +18,9 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: 'Talmech Trading | Verified Metal Marketplace India', template: '%s | Talmech Trading' },
-  description: 'India-focused B2B metal marketplace for steel, scrap, copper, aluminum, brass, forgings, precision components, buyer requirements, supplier listings and logistics coordination.',
-  applicationName: 'Talmech Trading',
+  title: { default: siteSeoConfig.defaultTitle, template: '%s | Talmech Trading' },
+  description: siteSeoConfig.defaultDescription,
+  applicationName: siteSeoConfig.siteName,
   generator: 'Next.js',
   keywords: [
     'Talmech Trading', 'metal marketplace India', 'steel suppliers Pune', 'TMT bars supplier', 'copper scrap buyer',
@@ -53,21 +54,13 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const websiteSchema = {
-    '@context': 'https://schema.org',
-    '@type': 'WebSite',
-    name: 'Talmech Trading',
-    url: siteUrl,
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: `${siteUrl}/public-marketplace?query={search_term_string}`,
-      'query-input': 'required name=search_term_string'
-    }
-  };
+  const websiteSchema = websiteJsonLd();
+  const organizationSchema = organizationJsonLd();
   return (
     <html lang="en-IN">
       <body>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
         <PublicHeader />
         <RoleGate />
         <MarketingTracker />

@@ -1,0 +1,32 @@
+# Talmech Trading
+
+Talmech Trading is an India-focused metal marketplace and industrial services website for metal sourcing, selling, logistics coordination, manpower services, WhatsApp-assisted listing, and manufacturing intelligence.
+
+Important public URLs:
+- /
+- /public-marketplace
+- /marketplace
+- /post-requirement
+- /sell
+- /whatsapp-upload
+- /logistics
+- /manpower-services
+- /metals
+- /metal-products
+- /scrap
+- /how-it-works
+- /tmis
+- /manufacturing-intelligence
+- /contact
+
+Private or non-public areas:
+- /admin
+- /admin-*
+- /account
+- /dashboard
+- /crm
+- /analytics
+- /invoices
+- /api
+
+Do not use private/admin/API routes as public knowledge sources. Do not infer secrets, credentials, prices, private leads, client records, or admin data from this file.
