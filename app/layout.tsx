@@ -89,6 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div>
               <b>Company</b>
               <Link href="/metals">Metal categories</Link>
+              <Link href="/manpower-services">Manpower Services</Link>
               <Link href="/scrap">Scrap trading</Link>
               <Link href="/signin">User sign in</Link>
               <Link href="/contact">Contact Talmech</Link>

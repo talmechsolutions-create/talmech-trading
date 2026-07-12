@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/public-marketplace', '/post-requirement', '/sell', '/signin', '/contact', '/how-it-works', '/metals', '/metal-products', '/products', '/materials', '/grades', '/quality', '/marketplace', '/rfq', '/scrap', '/logistics', '/tmis', '/manufacturing-intelligence'],
+        allow: ['/', '/public-marketplace', '/post-requirement', '/sell', '/signin', '/contact', '/how-it-works', '/manpower-services', '/metals', '/metal-products', '/products', '/materials', '/grades', '/quality', '/marketplace', '/rfq', '/scrap', '/logistics', '/tmis', '/manufacturing-intelligence'],
         disallow: ['/dashboard', '/crm', '/admin', '/admin/tmis', '/admin-tmis', '/admin-login', '/admin-leads', '/admin-users', '/admin-price-locks', '/admin-logistics', '/seo-tracker', '/supplier-search', '/industry-search', '/strategy', '/knowledge', '/small-deals', '/analytics', '/invoices', '/api'],
       },
     ],
