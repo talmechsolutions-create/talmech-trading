@@ -1896,6 +1896,40 @@ body{background:var(--bg);color:var(--ink);font-feature-settings:'kern';}
 @media(max-width:1180px){.listingIntelShell .listingStrategyGrid,.listingIntelShell .strategyFacetGrid,.manualListingLayout{grid-template-columns:1fr!important}.accountSummaryStrip{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.accountSummaryStrip,.accountProfileSummary{grid-template-columns:1fr}.adminShell .waAdminTable{min-width:900px}.waAdminActions .btn,.waActionRow .btn,.manualSubmitBar .btn,.manualListingLayout .btn,.accountQuickActions .btn{width:100%}}
 
+/* Prospect outreach CRM */
+.outreachAdminShell .pageTitle{letter-spacing:0!important}
+.outreachHead{align-items:flex-start}
+.outreachKpiGrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;margin:0 0 18px}
+.outreachKpiGrid .card{border-radius:14px!important;padding:16px!important;display:grid;gap:8px;min-height:112px}
+.outreachKpiGrid span{font-size:12px;font-weight:900;color:#c4d1df}
+.outreachKpiGrid b{font-size:30px;color:#fff}
+.outreachNotice{margin:18px 0}
+.outreachLayout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);gap:18px;align-items:start}
+.outreachWorkPanel,.outreachPreviewPanel,.outreachTablePanel{background:#0f1c2e!important;border:1px solid #273a50!important;border-radius:14px!important;color:#e6edf5!important}
+.outreachPreviewPanel{position:sticky;top:96px;display:grid;gap:14px}
+.outreachFormGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.outreachFormGrid .span2{grid-column:1/-1}
+.outreachBulkPanel{border-top:1px solid rgba(255,255,255,.12);margin-top:22px;padding-top:20px;display:grid;gap:14px}
+.outreachDefaults,.outreachFilters,.outreachSuggestionGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.outreachFilters{grid-template-columns:minmax(260px,1.2fr) repeat(4,minmax(150px,1fr));margin:0 0 14px}
+.outreachTemplatePurpose{margin:0;line-height:1.55}
+.outreachSuggestionGrid div{background:#102338;border:1px solid #294057;border-radius:12px;padding:12px;display:grid;gap:5px}
+.outreachSuggestionGrid span{font-size:11px;text-transform:uppercase;font-weight:950;color:#93c5fd}
+.outreachSuggestionGrid b{font-size:13px;line-height:1.4;color:#f8fafc}
+.outreachStatusActions,.outreachFollowUpBox{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.outreachFollowUpBox label{min-width:220px;flex:1}
+.outreachTablePanel{margin-top:18px}
+.outreachTable{min-width:1640px}
+.outreachTable input[type="checkbox"]{width:18px;height:18px}
+.outreachSelectedRow td{background:#122842!important}
+.outreachNotesCell{max-width:280px;white-space:pre-wrap;line-height:1.45}
+.adminShell .darkPill{background:#2d1720!important;border-color:#fb7185!important;color:#fecdd3!important}
+.adminShell .outreachPreviewPanel textarea{min-height:150px}
+.adminShell .outreachPreviewPanel label,.adminShell .outreachWorkPanel label{color:#f8fafc!important}
+.adminShell .outreachPreviewPanel input[readonly]{cursor:text}
+@media(max-width:1220px){.outreachKpiGrid{grid-template-columns:repeat(4,minmax(0,1fr))}.outreachLayout{grid-template-columns:1fr}.outreachPreviewPanel{position:static}.outreachFilters{grid-template-columns:1fr 1fr}}
+@media(max-width:760px){.outreachKpiGrid,.outreachFormGrid,.outreachDefaults,.outreachFilters,.outreachSuggestionGrid{grid-template-columns:1fr}.outreachHead{display:grid}.outreachStatusActions,.outreachFollowUpBox{display:grid}.outreachStatusActions .btn,.outreachFollowUpBox .btn{width:100%}.adminShell .outreachTable{min-width:1100px}}
+
 /* Skilled manpower services public SEO page */
 .manpowerPage{background:#f5f8fb;color:#0f172a}
 .manpowerPage h1,.manpowerPage h2,.manpowerPage h3{letter-spacing:0;margin-top:0}

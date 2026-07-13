@@ -335,6 +335,57 @@ model EmailOutbox {
   providerError Json?
 }
 
+model OutreachProspect {
+  id                      String   @id
+  prospectId              String   @unique
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  companyName             String?
+  contactPerson           String?
+  designation             String?
+  email                   String?
+  mobile                  String?
+  whatsappNumber          String?
+  city                    String?
+  state                   String?
+  country                 String?  @default("India")
+  website                 String?
+  businessType            String   @default("other")
+  industryTags            Json?
+  source                  String?
+  consentStatus           String   @default("unknown")
+  outreachStatus          String   @default("draft")
+  assignedTemplate        String?
+  lastEmailSentAt         DateTime?
+  lastWhatsappPreparedAt  DateTime?
+  lastFollowUpAt          DateTime?
+  nextFollowUpAt          DateTime?
+  notes                   String?
+  raw                     Json?
+
+  @@index([businessType])
+  @@index([outreachStatus])
+  @@index([consentStatus])
+  @@index([email])
+  @@index([mobile])
+  @@index([whatsappNumber])
+  @@index([city])
+  @@index([state])
+}
+
+model OutreachSuppression {
+  id               String   @id
+  createdAt        DateTime @default(now())
+  identifier       String   @unique
+  identifierType   String
+  reason           String?
+  sourceProspectId String?
+  raw              Json?
+
+  @@index([identifierType])
+  @@index([sourceProspectId])
+}
+
 model AdminAction {
   id        String   @id
   createdAt DateTime @default(now())
