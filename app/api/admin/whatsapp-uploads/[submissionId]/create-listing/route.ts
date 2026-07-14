@@ -23,37 +23,37 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ ok: false, error: 'Admin authentication required.' }, { status: 401 });
   }
 
-  const submission = await findWhatsappUpload(params.submissionId);
-  if (!submission) return NextResponse.json({ ok: false, error: 'Submission not found.' }, { status: 404 });
-
-  const body = await req.json().catch(() => ({}));
-  const existingIds = submission.listingCreation?.listingIds || [];
-  if (existingIds.length && body.allowAnother !== true) {
-    return NextResponse.json(
-      { ok: false, error: 'A listing is already linked to this submission. Use Create another listing to continue.', listingIds: existingIds },
-      { status: 409 }
-    );
-  }
-
-  const accountId = sanitizeString(body.accountId || submission.accountCreation?.accountId, 80);
-  const account = accountId ? await findUser(accountId) : null;
-  const input = {
-    ...listingInputFromWhatsapp(submission, account),
-    ...body,
-    accountId: account?.id || accountId,
-    ownerUserId: account?.id || accountId,
-    ownerEmail: body.ownerEmail || account?.email || submission.email,
-    ownerMobile: body.ownerMobile || account?.primaryMobile || submission.mobile,
-    firmName: body.firmName || account?.firmName || submission.firmName,
-    contactPerson: body.contactPerson || account?.ownerName || submission.fullName,
-    whatsappSubmissionId: submission.submissionId,
-  };
-
-  if (!sanitizeString(input.metal, 80) || !sanitizeString(input.product, 140)) {
-    return NextResponse.json({ ok: false, error: 'Metal and product are required before creating a listing.' }, { status: 400 });
-  }
-
   try {
+    const submission = await findWhatsappUpload(params.submissionId);
+    if (!submission) return NextResponse.json({ ok: false, error: 'Submission not found.' }, { status: 404 });
+
+    const body = await req.json().catch(() => ({}));
+    const existingIds = submission.listingCreation?.listingIds || [];
+    if (existingIds.length && body.allowAnother !== true) {
+      return NextResponse.json(
+        { ok: false, error: 'A listing is already linked to this submission. Use Create another listing to continue.', listingIds: existingIds },
+        { status: 409 }
+      );
+    }
+
+    const accountId = sanitizeString(body.accountId || submission.accountCreation?.accountId, 80);
+    const account = accountId ? await findUser(accountId) : null;
+    const input = {
+      ...listingInputFromWhatsapp(submission, account),
+      ...body,
+      accountId: account?.id || accountId,
+      ownerUserId: account?.id || accountId,
+      ownerEmail: body.ownerEmail || account?.email || submission.email,
+      ownerMobile: body.ownerMobile || account?.primaryMobile || submission.mobile,
+      firmName: body.firmName || account?.firmName || submission.firmName,
+      contactPerson: body.contactPerson || account?.ownerName || submission.fullName,
+      whatsappSubmissionId: submission.submissionId,
+    };
+
+    if (!sanitizeString(input.metal, 80) || !sanitizeString(input.product, 140)) {
+      return NextResponse.json({ ok: false, error: 'Metal and product are required before creating a listing.' }, { status: 400 });
+    }
+
     const listing = await createWorkspaceListing(input, {
       owner: account || undefined,
       source: 'whatsapp-assisted-admin',

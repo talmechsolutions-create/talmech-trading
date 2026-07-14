@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import AdminDataLoadError from '@/components/AdminDataLoadError';
 import OutreachCrm from '@/components/OutreachCrm';
+import { loadAdminData } from '@/lib/adminSsr';
 import { listOutreachProspects } from '@/lib/outreachStore';
 import {
   outreachBusinessTypes,
@@ -19,7 +21,8 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOutreachPage() {
-  const prospects = await listOutreachProspects();
+  const { data: prospects, error } = await loadAdminData('/admin/outreach', () => listOutreachProspects(), []);
+  if (error) return <AdminDataLoadError title="Prospect Outreach CRM" route="/admin/outreach" error={error} />;
 
   return (
     <OutreachCrm

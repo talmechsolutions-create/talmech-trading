@@ -10,8 +10,15 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const user = await getClientSessionUser(req);
   if (!user) return NextResponse.json({ ok: false, error: 'Client sign-in required.' }, { status: 401 });
-  const tickets = await listSupportTicketsForUser(user.id);
-  return NextResponse.json({ ok: true, tickets, updatedAt: new Date().toISOString() });
+  try {
+    const tickets = await listSupportTicketsForUser(user.id);
+    return NextResponse.json({ ok: true, tickets, updatedAt: new Date().toISOString() });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('ACCOUNT_SUPPORT_TICKETS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load support tickets.' }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

@@ -15,8 +15,15 @@ function ownsListing(listing: any, user: any) {
 export async function GET(req: NextRequest) {
   const user = await getClientSessionUser(req);
   if (!user) return NextResponse.json({ ok: false, error: 'Client sign-in required.' }, { status: 401 });
-  const listings = (await listListings(false)).filter((listing: any) => ownsListing(listing, user));
-  return NextResponse.json({ ok: true, listings, updatedAt: new Date().toISOString() });
+  try {
+    const listings = (await listListings(false)).filter((listing: any) => ownsListing(listing, user));
+    return NextResponse.json({ ok: true, listings, updatedAt: new Date().toISOString() });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('ACCOUNT_LISTINGS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load account listings.' }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

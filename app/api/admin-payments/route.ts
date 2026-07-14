@@ -40,47 +40,54 @@ function summarize(locks: any[], payments: any[], payouts: any[]) {
 }
 
 export async function GET(req: NextRequest) {
-  const [locks, payments, invoices, payouts] = await Promise.all([
-    listPriceLocks(),
-    listPayments(),
-    listInvoices(),
-    listAdminPayouts(),
-  ]);
+  try {
+    const [locks, payments, invoices, payouts] = await Promise.all([
+      listPriceLocks(),
+      listPayments(),
+      listInvoices(),
+      listAdminPayouts(),
+    ]);
 
-  const rows = locks.map((lock: any) => ({ ...lock, paymentStage: paymentStage(lock) }));
+    const rows = locks.map((lock: any) => ({ ...lock, paymentStage: paymentStage(lock) }));
 
-  if (req.nextUrl.searchParams.get('format') === 'csv') {
-    const exportRows = rows.map((r: any) => ({
-      id: r.id,
-      createdAt: r.createdAt,
-      buyerName: r.buyerName,
-      buyerPhone: r.buyerPhone,
-      product: `${r.product || ''} ${r.grade || ''}`.trim(),
-      paymentMode: r.paymentStage.label,
-      paymentStatus: r.status,
-      razorpayPaymentId: r.paymentId,
-      amountReceived: r.paymentStage.paid,
-      totalBuyerPayable: r.paymentStage.total,
-      balancePending: r.paymentStage.balance,
-      logisticsProvider: r.logisticsProviderName,
-      logisticsCost: r.logisticsCost,
-      sellerNetEstimate: r.supplierNetEstimate,
-      invoiceId: r.invoiceId,
-    }));
-    return new NextResponse(csv(exportRows, Object.keys(exportRows[0] || { id: '' })), {
-      headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="talmech-payment-tracker.csv"' },
+    if (req.nextUrl.searchParams.get('format') === 'csv') {
+      const exportRows = rows.map((r: any) => ({
+        id: r.id,
+        createdAt: r.createdAt,
+        buyerName: r.buyerName,
+        buyerPhone: r.buyerPhone,
+        product: `${r.product || ''} ${r.grade || ''}`.trim(),
+        paymentMode: r.paymentStage.label,
+        paymentStatus: r.status,
+        razorpayPaymentId: r.paymentId,
+        amountReceived: r.paymentStage.paid,
+        totalBuyerPayable: r.paymentStage.total,
+        balancePending: r.paymentStage.balance,
+        logisticsProvider: r.logisticsProviderName,
+        logisticsCost: r.logisticsCost,
+        sellerNetEstimate: r.supplierNetEstimate,
+        invoiceId: r.invoiceId,
+      }));
+      return new NextResponse(csv(exportRows, Object.keys(exportRows[0] || { id: '' })), {
+        headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="talmech-payment-tracker.csv"' },
+      });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      locks: rows,
+      payments,
+      invoices,
+      payouts,
+      summary: summarize(locks, payments, payouts),
+      updatedAt: new Date().toISOString(),
     });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('ADMIN_PAYMENTS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load payment tracker.' }, { status: 500 });
   }
-
-  return NextResponse.json({
-    ok: true,
-    locks: rows,
-    payments,
-    invoices,
-    payouts,
-    summary: summarize(locks, payments, payouts),
-    updatedAt: new Date().toISOString(),
-  });
 }
 
 export async function POST(req: NextRequest) {

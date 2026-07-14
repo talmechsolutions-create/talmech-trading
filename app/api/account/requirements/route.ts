@@ -15,8 +15,15 @@ function ownsLead(lead: any, user: any) {
 export async function GET(req: NextRequest) {
   const user = await getClientSessionUser(req);
   if (!user) return NextResponse.json({ ok: false, error: 'Client sign-in required.' }, { status: 401 });
-  const requirements = (await listLeads()).filter((lead: any) => ownsLead(lead, user));
-  return NextResponse.json({ ok: true, requirements, updatedAt: new Date().toISOString() });
+  try {
+    const requirements = (await listLeads()).filter((lead: any) => ownsLead(lead, user));
+    return NextResponse.json({ ok: true, requirements, updatedAt: new Date().toISOString() });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('ACCOUNT_REQUIREMENTS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load account requirements.' }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

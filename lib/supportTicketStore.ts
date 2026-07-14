@@ -1,6 +1,6 @@
 import path from 'path';
 import { readJsonArray, writeJsonArray } from '@/lib/marketplaceStore';
-import { prisma, useDatabase } from '@/lib/proDb';
+import { hasDatabaseConnection, prisma } from '@/lib/proDb';
 import { isProduction, persistentStorageUnavailable, requirePersistentStorage } from '@/lib/storageMode';
 import { sanitizeMultiline, sanitizeString } from '@/lib/validation';
 
@@ -112,7 +112,7 @@ function fromDbTicket(row: any): SupportTicket {
 }
 
 async function withTicketDb<T>(fn: () => Promise<T>, fallback: () => Promise<T>) {
-  if (!useDatabase()) return fallback();
+  if (!hasDatabaseConnection()) return fallback();
   try {
     return await fn();
   } catch (error) {

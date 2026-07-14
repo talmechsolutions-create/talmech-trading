@@ -22,9 +22,16 @@ import {
 export const dynamic = 'force-dynamic';
 const leadHeaders = ['id','createdAt','intent','companyName','contactName','phone','email','metal','product','grade','quantity','unit','state','city','area','pincode','targetPrice','dispatchReadiness','readyDispatchTime','productionLeadTime','deliveryEta','technicalDetails','mediaLinks','status','source'];
 export async function GET(req: NextRequest) {
-  const leads = await listLeads();
-  if (req.nextUrl.searchParams.get('format') === 'csv') return new NextResponse(csv(leads, leadHeaders), { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="talmech-admin-leads.csv"' } });
-  return NextResponse.json({ leads, updatedAt: new Date().toISOString(), storage: getStorageMode() });
+  try {
+    const leads = await listLeads();
+    if (req.nextUrl.searchParams.get('format') === 'csv') return new NextResponse(csv(leads, leadHeaders), { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': 'attachment; filename="talmech-admin-leads.csv"' } });
+    return NextResponse.json({ leads, updatedAt: new Date().toISOString(), storage: getStorageMode() });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('PUBLIC_REQUIREMENTS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load requirements.' }, { status: 500 });
+  }
 }
 export async function POST(req: NextRequest) {
   const limited = await rateLimitResponse(req, { keyPrefix: 'public-requirements', limit: 16, windowMs: 15 * 60 * 1000 });

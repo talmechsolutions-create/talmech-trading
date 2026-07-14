@@ -13,7 +13,7 @@ import {
   renderWhatsAppMessage,
   whatsappClickToChat,
 } from '@/lib/outreachTemplates';
-import { prisma, useDatabase } from '@/lib/proDb';
+import { hasDatabaseConnection, prisma } from '@/lib/proDb';
 import { isProduction, persistentStorageUnavailable, requirePersistentStorage } from '@/lib/storageMode';
 import { isValidEmail, normalizeEmail, sanitizeMultiline, sanitizeString, sanitizeStringArray } from '@/lib/validation';
 
@@ -75,7 +75,7 @@ function clean<T extends Record<string, any>>(obj: T): T {
 }
 
 async function withOutreachDb<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
-  if (!useDatabase()) return fallback();
+  if (!hasDatabaseConnection()) return fallback();
   try {
     return await fn();
   } catch (error) {

@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { prisma, useDatabase } from '@/lib/proDb';
+import { hasDatabaseConnection, prisma } from '@/lib/proDb';
 import { canUseJsonFileStorage, isProduction, persistentStorageUnavailable, requireJsonFileStorage, requirePersistentStorage } from '@/lib/storageMode';
 import {
   WhatsappAccountCreation,
@@ -223,7 +223,7 @@ function dbUploadData(submission: WhatsappUploadSubmission) {
 }
 
 async function withUploadDb<T>(fn: () => Promise<T>, fallback: () => Promise<T>) {
-  if (!useDatabase()) return fallback();
+  if (!hasDatabaseConnection()) return fallback();
   try {
     return await fn();
   } catch (error) {

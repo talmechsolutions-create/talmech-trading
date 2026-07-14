@@ -78,29 +78,36 @@ function roleCategory(accountType: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const statusQuery = req.nextUrl.searchParams.get('statusBy');
-  if (statusQuery) {
-    const rawLookup = sanitizeString(statusQuery, 254);
-    const lookupKey = rawLookup.startsWith('USR-')
-      ? rawLookup
-      : rawLookup.includes('@')
-        ? normalizeEmail(rawLookup)
-        : normalizeIndianMobile(rawLookup);
-    const u = await findUser(lookupKey);
-    return NextResponse.json({ ok: !!u, user: publicStatusSummary(u) });
-  }
+  try {
+    const statusQuery = req.nextUrl.searchParams.get('statusBy');
+    if (statusQuery) {
+      const rawLookup = sanitizeString(statusQuery, 254);
+      const lookupKey = rawLookup.startsWith('USR-')
+        ? rawLookup
+        : rawLookup.includes('@')
+          ? normalizeEmail(rawLookup)
+          : normalizeIndianMobile(rawLookup);
+      const u = await findUser(lookupKey);
+      return NextResponse.json({ ok: !!u, user: publicStatusSummary(u) });
+    }
 
-  const users = await listUsers();
-  if (req.nextUrl.searchParams.get('format') === 'csv') {
-    return new NextResponse(csv(users, headers), {
-      headers: {
-        'content-type': 'text/csv; charset=utf-8',
-        'content-disposition': 'attachment; filename="talmech-user-registrations.csv"',
-      },
-    });
-  }
+    const users = await listUsers();
+    if (req.nextUrl.searchParams.get('format') === 'csv') {
+      return new NextResponse(csv(users, headers), {
+        headers: {
+          'content-type': 'text/csv; charset=utf-8',
+          'content-disposition': 'attachment; filename="talmech-user-registrations.csv"',
+        },
+      });
+    }
 
-  return NextResponse.json({ users, updatedAt: new Date().toISOString(), storage: getStorageMode() });
+    return NextResponse.json({ users, updatedAt: new Date().toISOString(), storage: getStorageMode() });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('USER_REGISTRATIONS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load user registrations.' }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

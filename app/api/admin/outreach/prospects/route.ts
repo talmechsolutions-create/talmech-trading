@@ -20,24 +20,31 @@ function resultStatus(code: string) {
 export async function GET(req: NextRequest) {
   if (!requireAdmin(req)) return apiError('ADMIN_AUTH_REQUIRED', 'Admin authentication required.', 401);
 
-  const filters = {
-    businessType: req.nextUrl.searchParams.get('businessType') || '',
-    outreachStatus: req.nextUrl.searchParams.get('outreachStatus') || '',
-    city: req.nextUrl.searchParams.get('city') || '',
-    state: req.nextUrl.searchParams.get('state') || '',
-  };
-  const prospects = await listOutreachProspects(filters);
+  try {
+    const filters = {
+      businessType: req.nextUrl.searchParams.get('businessType') || '',
+      outreachStatus: req.nextUrl.searchParams.get('outreachStatus') || '',
+      city: req.nextUrl.searchParams.get('city') || '',
+      state: req.nextUrl.searchParams.get('state') || '',
+    };
+    const prospects = await listOutreachProspects(filters);
 
-  if (req.nextUrl.searchParams.get('format') === 'csv') {
-    return new NextResponse(outreachProspectsCsv(prospects), {
-      headers: {
-        'content-type': 'text/csv; charset=utf-8',
-        'content-disposition': 'attachment; filename="talmech-outreach-prospects.csv"',
-      },
-    });
+    if (req.nextUrl.searchParams.get('format') === 'csv') {
+      return new NextResponse(outreachProspectsCsv(prospects), {
+        headers: {
+          'content-type': 'text/csv; charset=utf-8',
+          'content-disposition': 'attachment; filename="talmech-outreach-prospects.csv"',
+        },
+      });
+    }
+
+    return apiOk({ prospects, updatedAt: new Date().toISOString() });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('OUTREACH_PROSPECTS_GET_FAILED', error);
+    return apiError('OUTREACH_PROSPECTS_GET_FAILED', 'Unable to load outreach prospects.', 500);
   }
-
-  return apiOk({ prospects, updatedAt: new Date().toISOString() });
 }
 
 export async function POST(req: NextRequest) {

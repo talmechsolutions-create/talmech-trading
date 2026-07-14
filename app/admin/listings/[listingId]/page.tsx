@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import AdminDataLoadError from '@/components/AdminDataLoadError';
 import AdminListingClientEmailActions from '@/components/AdminListingClientEmailActions';
 import AdminListingStatusActions from '@/components/AdminListingStatusActions';
+import { loadAdminData } from '@/lib/adminSsr';
 import { generateListingStrategy } from '@/lib/listingIntelligence';
 import { productImagesFromListing } from '@/lib/listingImages';
 import { findListing } from '@/lib/proDb';
@@ -24,7 +26,9 @@ function Field({ label, value }: { label: string; value: unknown }) {
 }
 
 export default async function AdminListingDetailPage({ params }: { params: { listingId: string } }) {
-  const listing = await findListing(params.listingId);
+  const route = `/admin/listings/${params.listingId}`;
+  const { data: listing, error } = await loadAdminData(route, () => findListing(params.listingId), null, { listingId: params.listingId });
+  if (error) return <AdminDataLoadError title="Admin listing detail" route={route} error={error} backHref="/admin/listings" backLabel="Back to listings" />;
   if (!listing) notFound();
   const raw = listing.raw && typeof listing.raw === 'object' ? listing.raw : {};
   const images = productImagesFromListing(listing);

@@ -24,14 +24,28 @@ function safePublicRow(row:any) {
   return { ...row, raw };
 }
 export async function GET(req: NextRequest) {
-  const rows = await listListings(false);
-  const publicRows = rows.filter(isPublicListing).map(safePublicRow);
-  const listings = [...publicRows, ...publicDemo()];
-  if (req.nextUrl.searchParams.get('format') === 'csv') {
-    const headers = ['id','leadId','createdAt','type','metal','product','grade','quantity','unit','priceType','state','city','area','pincode','dispatchReadiness','readyDispatchTime','productionLeadTime','deliveryEta','status','lockStatus','verified'];
-    return new NextResponse(csv(rows, headers), {headers:{'content-type':'text/csv; charset=utf-8','content-disposition':'attachment; filename="talmech-marketplace-listings.csv"'}});
+  try {
+    const rows = await listListings(false);
+    const publicRows = rows.filter(isPublicListing).map(safePublicRow);
+    const listings = [...publicRows, ...publicDemo()];
+    if (req.nextUrl.searchParams.get('format') === 'csv') {
+      const headers = ['id','leadId','createdAt','type','metal','product','grade','quantity','unit','priceType','state','city','area','pincode','dispatchReadiness','readyDispatchTime','productionLeadTime','deliveryEta','status','lockStatus','verified'];
+      return new NextResponse(csv(rows, headers), {headers:{'content-type':'text/csv; charset=utf-8','content-disposition':'attachment; filename="talmech-marketplace-listings.csv"'}});
+    }
+    return NextResponse.json({ listings, updatedAt: new Date().toISOString(), storage: getStorageMode() });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) {
+      return NextResponse.json({
+        ...storageError,
+        listings: publicDemo(),
+        updatedAt: new Date().toISOString(),
+        storage: getStorageMode(),
+      });
+    }
+    console.error('MARKETPLACE_LISTINGS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load marketplace listings.', listings: publicDemo() }, { status: 500 });
   }
-  return NextResponse.json({ listings, updatedAt: new Date().toISOString(), storage: getStorageMode() });
 }
 export async function PATCH(req: NextRequest) {
   const body = await req.json().catch(() => ({}));

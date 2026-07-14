@@ -69,22 +69,29 @@ const headers = [
 ];
 
 export async function GET(req: NextRequest) {
-  const rows = await listPriceLocks();
+  try {
+    const rows = await listPriceLocks();
 
-  if (req.nextUrl.searchParams.get('format') === 'csv') {
-    return new NextResponse(csv(rows, headers), {
-      headers: {
-        'content-type': 'text/csv; charset=utf-8',
-        'content-disposition': 'attachment; filename="talmech-price-locks.csv"',
-      },
+    if (req.nextUrl.searchParams.get('format') === 'csv') {
+      return new NextResponse(csv(rows, headers), {
+        headers: {
+          'content-type': 'text/csv; charset=utf-8',
+          'content-disposition': 'attachment; filename="talmech-price-locks.csv"',
+        },
+      });
+    }
+
+    return NextResponse.json({
+      locks: rows,
+      updatedAt: new Date().toISOString(),
+      storage: getStorageMode(),
     });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('PRICE_LOCKS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load price locks.' }, { status: 500 });
   }
-
-  return NextResponse.json({
-    locks: rows,
-    updatedAt: new Date().toISOString(),
-    storage: getStorageMode(),
-  });
 }
 
 export async function POST(req: NextRequest) {

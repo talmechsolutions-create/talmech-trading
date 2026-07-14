@@ -24,7 +24,7 @@ const paymentsFile = path.join(dataDir, 'payments.json');
 const payoutsFile = path.join(dataDir, 'admin-payouts.json');
 const logisticsProvidersFile = path.join(dataDir, 'logistics-providers.json');
 
-export const useDatabase = hasDatabaseUrl;
+export const hasDatabaseConnection = hasDatabaseUrl;
 
 /*
   Production readiness:
@@ -37,7 +37,7 @@ function clean<T extends Record<string, any>>(obj: T): T {
 }
 
 async function withDb<T>(fn: () => Promise<T>, fallback: () => Promise<T>): Promise<T> {
-  if (!useDatabase()) return fallback();
+  if (!hasDatabaseConnection()) return fallback();
   try { return await fn(); } catch (err) {
     console.error('[Talmech DB error]', err);
     if (isProduction()) throw persistentStorageUnavailable();
@@ -664,7 +664,7 @@ export async function createCrmLead(row: any) {
 }
 
 export async function logAdminAction(actor: string, action: string, entity?: string, entityId?: string, note?: string) {
-  if (!useDatabase()) return null;
+  if (!hasDatabaseConnection()) return null;
   try { return await prisma.adminAction.create({ data: { id:`ACT-${Date.now()}`, actor, action, entity, entityId, note } }); } catch { return null; }
 }
 

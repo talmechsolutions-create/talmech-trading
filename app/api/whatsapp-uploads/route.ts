@@ -79,14 +79,21 @@ function validateSubmission(body: Partial<WhatsappUploadInput>) {
 }
 
 export async function GET() {
-  const submissions = await listWhatsappUploads();
-  return NextResponse.json({
-    ok: true,
-    submissions,
-    rows: submissions.map(toWhatsappUploadAdminRow),
-    updatedAt: new Date().toISOString(),
-    storage: getStorageMode(),
-  });
+  try {
+    const submissions = await listWhatsappUploads();
+    return NextResponse.json({
+      ok: true,
+      submissions,
+      rows: submissions.map(toWhatsappUploadAdminRow),
+      updatedAt: new Date().toISOString(),
+      storage: getStorageMode(),
+    });
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('WHATSAPP_UPLOADS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load WhatsApp uploads.' }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

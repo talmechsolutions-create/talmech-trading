@@ -14,9 +14,16 @@ import {
 export const dynamic = 'force-dynamic';
 const headers = ['id','createdAt','sourceLeadId','leadType','stage','company','contact','phone','email','city','state','metal','quantity','frequency','value','nextAction','notes'];
 export async function GET(req: NextRequest) {
-  const rows = await listCrmLeads();
-  if (req.nextUrl.searchParams.get('format') === 'csv') return new NextResponse(csv(rows, headers), {headers:{'content-type':'text/csv; charset=utf-8','content-disposition':'attachment; filename="talmech-crm-leads.csv"'}});
-  return NextResponse.json({leads:rows, updatedAt:new Date().toISOString(), storage: getStorageMode()});
+  try {
+    const rows = await listCrmLeads();
+    if (req.nextUrl.searchParams.get('format') === 'csv') return new NextResponse(csv(rows, headers), {headers:{'content-type':'text/csv; charset=utf-8','content-disposition':'attachment; filename="talmech-crm-leads.csv"'}});
+    return NextResponse.json({leads:rows, updatedAt:new Date().toISOString(), storage: getStorageMode()});
+  } catch (error) {
+    const storageError = publicStorageError(error);
+    if (storageError) return NextResponse.json(storageError, { status: storageError.status });
+    console.error('CRM_LEADS_GET_FAILED', error);
+    return NextResponse.json({ ok: false, error: 'Unable to load CRM leads.' }, { status: 500 });
+  }
 }
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
