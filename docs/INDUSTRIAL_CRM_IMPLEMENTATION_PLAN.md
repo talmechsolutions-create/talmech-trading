@@ -30,6 +30,8 @@ Exit criteria:
 
 ## Phase 1: Foundation And Safety
 
+Status: completed in this repository as Phase 1 foundation on 2026-08-16.
+
 Scope:
 - Add admin permission model if approved.
 - Add stronger audit/event model.
@@ -57,7 +59,21 @@ Verification:
 - `npm run build`
 - `npx prisma validate`
 
+Completed in this Phase 1 pass:
+- Added the core Industrial Intelligence Prisma domain: company, plant, contact, process, capability, service opportunity, source, activity, assignment, import batch/row, duplicate candidate/resolution, promotion, and audit event models.
+- Added normalized duplicate-foundation fields and indexes for company names, domains, GSTIN, plant identity/address, phones, WhatsApp numbers, emails, location, verification, lifecycle, priority, and timestamps.
+- Added additive admin permission models: actor, role, permission, actor-role, and role-permission.
+- Added reusable industrial permission constants/helper with deny-by-default write behavior unless configured.
+- Added reusable industrial audit helper with PII-aware redaction for future industrial actions.
+- Created an additive migration at `prisma/migrations/20260816161000_industrial_intelligence_foundation/migration.sql`.
+
+Deferred from the broader suggested safety list:
+- Marketplace CSV behavior and centralized CSV formula hardening remain open because the Phase 1 request explicitly prohibited changing marketplace behavior.
+- No admin UI, imports, promotion endpoints, or existing CRM/Outreach behavior were changed.
+
 ## Phase 2: Prisma Models And Read-Only Admin
+
+Status: completed in this repository as the read-only Industrial Intelligence admin module on 2026-08-16.
 
 Scope:
 - Add new Industrial Intelligence tables.
@@ -96,6 +112,20 @@ Tests:
 - Prisma validation.
 - Empty-state page render tests if test framework exists.
 - API auth and pagination tests.
+
+Completed in this Phase 2 pass:
+- Added the protected admin route `/admin/industrial-intelligence` with KPI cards, state/region analytics, service opportunity analytics, empty-state handling, and a bounded companies preview.
+- Added read-only admin views for companies, company detail, plant detail, and contacts.
+- Added dedicated admin APIs for summary, companies, company detail, plant detail, and contacts.
+- Wired all new API routes to `industrial_intelligence.view` through the Phase 1 permission helper.
+- Added shared query parsing and server-side pagination helpers with explicit allowlists for filters, sort fields, page sizes, and enum-like query values.
+- Added Prisma query services using `count`, `groupBy`, `_count`, bounded `take`, bounded relation sections, and explicit `select` structures.
+- Added a Talmech admin home card for Industrial Intelligence.
+- Added a no-dependency Phase 2 smoke test script covering pagination bounds, safe filter parsing, read-only route shape, no-store API headers, and RBAC wiring.
+
+Deferred:
+- No imports, Google Sheet ingestion, duplicate resolution UI, CRM promotion, Outreach promotion, or create/edit/delete UI were added.
+- Phase 1 migration remains unapplied by code in this phase.
 
 ## Phase 3: Normalization And Duplicate Engine
 
@@ -480,4 +510,3 @@ When import changes occur:
 - CRM promotion SOP.
 - Rollback SOP.
 - Production deployment checklist.
-

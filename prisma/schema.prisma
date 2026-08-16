@@ -7,11 +7,175 @@ datasource db {
   url      = env("DATABASE_POSTGRES_URL")
 }
 
+enum IndustrialIndustryCategory {
+  FORGING
+  STEEL
+  OTHER_MANUFACTURING
+}
+
+enum IndustrialVerificationStatus {
+  UNVERIFIED
+  DISCOVERY_ONLY
+  SOURCE_CAPTURED
+  AUTO_NORMALIZED
+  NEEDS_REVIEW
+  ASSOCIATION_VERIFIED
+  REGULATORY_VERIFIED
+  OFFICIAL_VERIFIED
+  MANUALLY_VERIFIED
+  PARTIALLY_VERIFIED
+  VERIFIED
+  CONFLICTING
+  STALE
+  REJECTED
+}
+
+enum IndustrialLifecycleStatus {
+  DISCOVERED
+  VERIFICATION_PENDING
+  VERIFIED
+  QUALIFIED
+  OUTREACH_READY
+  CONTACTED
+  ENGAGED
+  CRM_PROMOTED
+  OPPORTUNITY
+  QUOTATION
+  CUSTOMER
+  DISQUALIFIED
+}
+
+enum IndustrialPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IndustrialSourceType {
+  OFFICIAL_WEBSITE
+  GOVERNMENT
+  SPCB_OCMMS
+  AIFI
+  AIIFA
+  JPC
+  INDUSTRY_ASSOCIATION
+  GOOGLE_MAPS
+  INDIAMART
+  TRADEINDIA
+  EXISTING_PHONE_CRM
+  MANUAL_RESEARCH
+  OTHER
+}
+
+enum IndustrialContactScope {
+  COMPANY_LEVEL
+  PLANT_SPECIFIC
+}
+
+enum IndustrialServiceType {
+  MPI_NDT
+  VISUAL_INSPECTION
+  GRINDING
+  FETTLING
+  SORTING
+  SEGREGATION
+  REWORK
+  OILING
+  PACKING
+  MATERIAL_HANDLING
+  PRODUCTION_SUPPORT
+  QUALITY_CONTAINMENT
+  MANAGED_MANPOWER
+  OTHER_INDUSTRIAL_SERVICES
+}
+
+enum IndustrialOpportunityStatus {
+  IDENTIFIED
+  NEEDS_VERIFICATION
+  VERIFIED_FIT
+  QUALIFIED
+  OUTREACH_READY
+  CONTACTED
+  ENGAGED
+  DISQUALIFIED
+}
+
+enum IndustrialImportStatus {
+  UPLOADED
+  PARSED
+  VALIDATED
+  DRY_RUN_READY
+  DUPLICATE_REVIEW
+  APPROVED
+  COMMITTING
+  COMMITTED
+  FAILED
+  ROLLED_BACK
+}
+
+enum IndustrialImportRowStatus {
+  PARSED
+  INVALID
+  VALID
+  DUPLICATE_CANDIDATE
+  CONFLICT
+  READY_TO_COMMIT
+  COMMITTED
+  SKIPPED
+  FAILED
+}
+
+enum IndustrialDuplicateStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum IndustrialDuplicateResolutionAction {
+  MERGE
+  UPDATE_EXISTING
+  CREATE_NEW_COMPANY
+  CREATE_NEW_PLANT
+  SKIP_ROW
+  MARK_NOT_DUPLICATE
+}
+
+enum IndustrialPromotionType {
+  OUTREACH
+  CRM
+  MARKETPLACE
+  ACCOUNT
+  SUPPORT
+}
+
+enum IndustrialPromotionTarget {
+  OUTREACH_PROSPECT
+  CRM_LEAD
+  MARKETPLACE_LISTING
+  USER_REGISTRATION
+  SUPPORT_TICKET
+}
+
+enum IndustrialPromotionStatus {
+  PREPARED
+  PROMOTED
+  SKIPPED
+  FAILED
+  SUPERSEDED
+}
+
+enum AdminPermissionEffect {
+  ALLOW
+  DENY
+}
+
 model UserRegistration {
-  id                   String   @id
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  status               String   @default("PENDING_REVIEW")
+  id                       String   @id
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+  status                   String   @default("PENDING_REVIEW")
   accountType              String
   roleCategory             String?
   firmName                 String?
@@ -57,35 +221,35 @@ model UserRegistration {
 }
 
 model PublicLead {
-  id                String   @id
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  status            String   @default("New website lead")
-  source            String?
-  intent            String
-  companyName       String?
-  contactName       String?
-  phone             String?
-  email             String?
-  metal             String?
-  product           String?
-  grade             String?
-  quantity          String?
-  unit              String?
-  targetPrice       String?
-  state             String?
-  city              String?
-  area              String?
-  pincode           String?
-  dispatchReadiness String?
-  readyDispatchTime String?
+  id                 String              @id
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  status             String              @default("New website lead")
+  source             String?
+  intent             String
+  companyName        String?
+  contactName        String?
+  phone              String?
+  email              String?
+  metal              String?
+  product            String?
+  grade              String?
+  quantity           String?
+  unit               String?
+  targetPrice        String?
+  state              String?
+  city               String?
+  area               String?
+  pincode            String?
+  dispatchReadiness  String?
+  readyDispatchTime  String?
   productionLeadTime String?
-  deliveryEta       String?
-  technicalDetails  String?
-  mediaLinks        Json?
-  mediaGallery      Json?
-  raw               Json?
-  listing           MarketplaceListing?
+  deliveryEta        String?
+  technicalDetails   String?
+  mediaLinks         Json?
+  mediaGallery       Json?
+  raw                Json?
+  listing            MarketplaceListing?
 
   @@index([intent])
   @@index([status])
@@ -95,40 +259,40 @@ model PublicLead {
 }
 
 model MarketplaceListing {
-  id                  String   @id
-  leadId              String?  @unique
-  lead                PublicLead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  type                String
-  metal               String?
-  product             String?
-  grade               String?
-  quantity            String?
-  unit                String?
-  targetPrice         String?
-  priceType           String?
-  state               String?
-  city                String?
-  area                String?
-  pincode             String?
-  pickupAddress       String?
-  pickupLat           Float?
-  pickupLng           Float?
-  pickupMapUrl        String?
-  dispatchReadiness   String?
-  readyDispatchTime   String?
-  productionLeadTime  String?
-  deliveryEta         String?
-  technicalSummary    String?
-  mediaCount          Int      @default(0)
-  mediaGallery        Json?
-  previewImages       Json?
-  status              String   @default("Open")
-  lockStatus          String   @default("Available")
-  verified            Boolean  @default(false)
-  raw                 Json?
-  priceLocks          PriceLock[]
+  id                 String      @id
+  leadId             String?     @unique
+  lead               PublicLead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  type               String
+  metal              String?
+  product            String?
+  grade              String?
+  quantity           String?
+  unit               String?
+  targetPrice        String?
+  priceType          String?
+  state              String?
+  city               String?
+  area               String?
+  pincode            String?
+  pickupAddress      String?
+  pickupLat          Float?
+  pickupLng          Float?
+  pickupMapUrl       String?
+  dispatchReadiness  String?
+  readyDispatchTime  String?
+  productionLeadTime String?
+  deliveryEta        String?
+  technicalSummary   String?
+  mediaCount         Int         @default(0)
+  mediaGallery       Json?
+  previewImages      Json?
+  status             String      @default("Open")
+  lockStatus         String      @default("Available")
+  verified           Boolean     @default(false)
+  raw                Json?
+  priceLocks         PriceLock[]
 
   @@index([type])
   @@index([metal])
@@ -138,94 +302,94 @@ model MarketplaceListing {
 }
 
 model PriceLock {
-  id                 String   @id
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  status             String
-  listingId          String?
-  listing            MarketplaceListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  buyerName          String?
-  buyerPhone         String?
-  buyerEmail         String?
-  metal              String?
-  product            String?
-  grade              String?
-  quantity           String?
-  unit               String?
-  offeredQuantity    String?
-  offeredUnit        String?
-  paymentMode        String?
-  requestedQuantity  Float?
-  requestedUnit      String?
-  rate               String?
-  materialValue      Float?
-  gstRate            Float?
-  gstHsn             String?
-  materialGst        Float?
-  buyerServiceFee    Float?
-  buyerServiceGst    Float?
-  sellerServiceFee   Float?
-  buyerPayableEstimate Float?
-  priceLockAdvance   Float?
-  fullPaymentAmount   Float?
-  paymentAmount       Float?
-  supplierNetEstimate Float?
-  balanceOnDispatch  Float?
-  buyerRemarks       String?
-  sellerRemarks      String?
-  rateBasis          String?
-  paymentOrderId     String?
-  paymentId          String?
-  paidAt             DateTime?
-  invoiceId          String?
-  terms              String?
-  logisticsRequired   Boolean?
-  logisticsProviderId String?
-  logisticsProviderName String?
-  logisticsVehicleId String?
-  logisticsVehicleName String?
-  logisticsDistanceKm Float?
-  logisticsEtaLabel String?
-  logisticsEtaBy String?
-  logisticsTransitMinutes Float?
-  logisticsCost       Float?
-  logisticsBuyerPayable Float?
-  logisticsSellerPayable Float?
+  id                             String              @id
+  createdAt                      DateTime            @default(now())
+  updatedAt                      DateTime            @updatedAt
+  status                         String
+  listingId                      String?
+  listing                        MarketplaceListing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  buyerName                      String?
+  buyerPhone                     String?
+  buyerEmail                     String?
+  metal                          String?
+  product                        String?
+  grade                          String?
+  quantity                       String?
+  unit                           String?
+  offeredQuantity                String?
+  offeredUnit                    String?
+  paymentMode                    String?
+  requestedQuantity              Float?
+  requestedUnit                  String?
+  rate                           String?
+  materialValue                  Float?
+  gstRate                        Float?
+  gstHsn                         String?
+  materialGst                    Float?
+  buyerServiceFee                Float?
+  buyerServiceGst                Float?
+  sellerServiceFee               Float?
+  buyerPayableEstimate           Float?
+  priceLockAdvance               Float?
+  fullPaymentAmount              Float?
+  paymentAmount                  Float?
+  supplierNetEstimate            Float?
+  balanceOnDispatch              Float?
+  buyerRemarks                   String?
+  sellerRemarks                  String?
+  rateBasis                      String?
+  paymentOrderId                 String?
+  paymentId                      String?
+  paidAt                         DateTime?
+  invoiceId                      String?
+  terms                          String?
+  logisticsRequired              Boolean?
+  logisticsProviderId            String?
+  logisticsProviderName          String?
+  logisticsVehicleId             String?
+  logisticsVehicleName           String?
+  logisticsDistanceKm            Float?
+  logisticsEtaLabel              String?
+  logisticsEtaBy                 String?
+  logisticsTransitMinutes        Float?
+  logisticsCost                  Float?
+  logisticsBuyerPayable          Float?
+  logisticsSellerPayable         Float?
   logisticsPaymentResponsibility String?
-  logisticsPickup     String?
-  logisticsDrop       String?
-  logisticsScheduleDate String?
-  logisticsPickupLat Float?
-  logisticsPickupLng Float?
-  logisticsDropLat   Float?
-  logisticsDropLng   Float?
-  buyerDeliveryAddress String?
-  raw                Json?
+  logisticsPickup                String?
+  logisticsDrop                  String?
+  logisticsScheduleDate          String?
+  logisticsPickupLat             Float?
+  logisticsPickupLng             Float?
+  logisticsDropLat               Float?
+  logisticsDropLng               Float?
+  buyerDeliveryAddress           String?
+  raw                            Json?
 
   @@index([status])
   @@index([listingId])
 }
 
 model CrmLead {
-  id          String   @id
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
   sourceLeadId String?
-  leadType    String
-  stage       String   @default("New")
-  company     String?
-  contact     String?
-  phone       String?
-  email       String?
-  city        String?
-  state       String?
-  metal       String?
-  quantity    String?
-  frequency   String?
-  value       Float?
-  nextAction  String?
-  notes       String?
-  raw         Json?
+  leadType     String
+  stage        String   @default("New")
+  company      String?
+  contact      String?
+  phone        String?
+  email        String?
+  city         String?
+  state        String?
+  metal        String?
+  quantity     String?
+  frequency    String?
+  value        Float?
+  nextAction   String?
+  notes        String?
+  raw          Json?
 
   @@index([leadType])
   @@index([stage])
@@ -233,54 +397,54 @@ model CrmLead {
 }
 
 model Invoice {
-  id        String   @id
-  createdAt DateTime @default(now())
-  status    String   @default("Draft")
-  leadId    String?
-  lockId    String?
-  amount    Float?
-  gstAmount Float?
-  total     Float?
-  customer  Json?
-  items     Json?
-  terms     String?
-  logisticsRequired   Boolean?
-  logisticsProviderId String?
-  logisticsProviderName String?
-  logisticsVehicleId String?
-  logisticsVehicleName String?
-  logisticsDistanceKm Float?
-  logisticsEtaLabel String?
-  logisticsEtaBy String?
-  logisticsTransitMinutes Float?
-  logisticsCost       Float?
-  logisticsBuyerPayable Float?
-  logisticsSellerPayable Float?
+  id                             String   @id
+  createdAt                      DateTime @default(now())
+  status                         String   @default("Draft")
+  leadId                         String?
+  lockId                         String?
+  amount                         Float?
+  gstAmount                      Float?
+  total                          Float?
+  customer                       Json?
+  items                          Json?
+  terms                          String?
+  logisticsRequired              Boolean?
+  logisticsProviderId            String?
+  logisticsProviderName          String?
+  logisticsVehicleId             String?
+  logisticsVehicleName           String?
+  logisticsDistanceKm            Float?
+  logisticsEtaLabel              String?
+  logisticsEtaBy                 String?
+  logisticsTransitMinutes        Float?
+  logisticsCost                  Float?
+  logisticsBuyerPayable          Float?
+  logisticsSellerPayable         Float?
   logisticsPaymentResponsibility String?
-  logisticsPickup     String?
-  logisticsDrop       String?
-  logisticsScheduleDate String?
-  raw       Json?
+  logisticsPickup                String?
+  logisticsDrop                  String?
+  logisticsScheduleDate          String?
+  raw                            Json?
 }
 
 model Payment {
-  id        String   @id
-  createdAt DateTime @default(now())
-  status    String
-  provider  String?
-  providerOrderId String?
+  id                String   @id
+  createdAt         DateTime @default(now())
+  status            String
+  provider          String?
+  providerOrderId   String?
   providerPaymentId String?
-  method    String?
-  paymentType String?
-  amount    Float?
-  currency  String   @default("INR")
-  lockId    String?
-  invoiceId String?
-  buyerName String?
-  buyerPhone String?
-  buyerEmail String?
-  paymentMode String?
-  raw       Json?
+  method            String?
+  paymentType       String?
+  amount            Float?
+  currency          String   @default("INR")
+  lockId            String?
+  invoiceId         String?
+  buyerName         String?
+  buyerPhone        String?
+  buyerEmail        String?
+  paymentMode       String?
+  raw               Json?
 
   @@index([status])
   @@index([lockId])
@@ -289,34 +453,34 @@ model Payment {
 }
 
 model AdminPayout {
-  id              String   @id
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  status          String   @default("DRAFT")
-  payoutType      String
-  payableToType   String
-  payableToName   String?
-  payableToPhone  String?
-  payableToEmail  String?
-  payableToGst    String?
-  payableToBank   Json?
-  lockId          String?
-  invoiceId       String?
-  paymentId       String?
-  logisticsProviderId String?
+  id                    String    @id
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  status                String    @default("DRAFT")
+  payoutType            String
+  payableToType         String
+  payableToName         String?
+  payableToPhone        String?
+  payableToEmail        String?
+  payableToGst          String?
+  payableToBank         Json?
+  lockId                String?
+  invoiceId             String?
+  paymentId             String?
+  logisticsProviderId   String?
   logisticsProviderName String?
-  amount          Float    @default(0)
-  gstAmount       Float    @default(0)
-  tdsAmount       Float    @default(0)
-  deductions      Float    @default(0)
-  netPayable      Float    @default(0)
-  currency        String   @default("INR")
-  paymentMode     String?
-  adminReference  String?
-  payoutInvoiceId String?
-  paidAt          DateTime?
-  notes           String?
-  raw             Json?
+  amount                Float     @default(0)
+  gstAmount             Float     @default(0)
+  tdsAmount             Float     @default(0)
+  deductions            Float     @default(0)
+  netPayable            Float     @default(0)
+  currency              String    @default("INR")
+  paymentMode           String?
+  adminReference        String?
+  payoutInvoiceId       String?
+  paidAt                DateTime?
+  notes                 String?
+  raw                   Json?
 
   @@index([status])
   @@index([payoutType])
@@ -325,43 +489,43 @@ model AdminPayout {
 }
 
 model EmailOutbox {
-  id        String   @id
-  createdAt DateTime @default(now())
-  status    String   @default("queued")
-  leadId    String?
-  to        String?
-  subject   String?
-  html      String?
+  id            String   @id
+  createdAt     DateTime @default(now())
+  status        String   @default("queued")
+  leadId        String?
+  to            String?
+  subject       String?
+  html          String?
   providerError Json?
 }
 
 model OutreachProspect {
-  id                      String   @id
-  prospectId              String   @unique
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  companyName             String?
-  contactPerson           String?
-  designation             String?
-  email                   String?
-  mobile                  String?
-  whatsappNumber          String?
-  city                    String?
-  state                   String?
-  country                 String?  @default("India")
-  website                 String?
-  businessType            String   @default("other")
-  industryTags            Json?
-  source                  String?
-  consentStatus           String   @default("unknown")
-  outreachStatus          String   @default("draft")
-  assignedTemplate        String?
-  lastEmailSentAt         DateTime?
-  lastWhatsappPreparedAt  DateTime?
-  lastFollowUpAt          DateTime?
-  nextFollowUpAt          DateTime?
-  notes                   String?
-  raw                     Json?
+  id                     String    @id
+  prospectId             String    @unique
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  companyName            String?
+  contactPerson          String?
+  designation            String?
+  email                  String?
+  mobile                 String?
+  whatsappNumber         String?
+  city                   String?
+  state                  String?
+  country                String?   @default("India")
+  website                String?
+  businessType           String    @default("other")
+  industryTags           Json?
+  source                 String?
+  consentStatus          String    @default("unknown")
+  outreachStatus         String    @default("draft")
+  assignedTemplate       String?
+  lastEmailSentAt        DateTime?
+  lastWhatsappPreparedAt DateTime?
+  lastFollowUpAt         DateTime?
+  nextFollowUpAt         DateTime?
+  notes                  String?
+  raw                    Json?
 
   @@index([businessType])
   @@index([outreachStatus])
@@ -395,6 +559,603 @@ model AdminAction {
   entityId  String?
   note      String?
   raw       Json?
+}
+
+model AdminActor {
+  id          String           @id
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  username    String           @unique
+  displayName String?
+  status      String           @default("ACTIVE")
+  roles       AdminActorRole[]
+
+  @@index([status])
+}
+
+model AdminRole {
+  id          String                @id
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  key         String                @unique
+  label       String
+  description String?
+  status      String                @default("ACTIVE")
+  actors      AdminActorRole[]
+  permissions AdminRolePermission[]
+
+  @@index([status])
+}
+
+model AdminPermission {
+  id          String                @id
+  createdAt   DateTime              @default(now())
+  key         String                @unique
+  label       String
+  description String?
+  roles       AdminRolePermission[]
+}
+
+model AdminActorRole {
+  id        String     @id
+  createdAt DateTime   @default(now())
+  actorId   String
+  actor     AdminActor @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  roleId    String
+  role      AdminRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([actorId, roleId])
+  @@index([roleId])
+}
+
+model AdminRolePermission {
+  id           String                @id
+  createdAt    DateTime              @default(now())
+  roleId       String
+  role         AdminRole             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   AdminPermission       @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  effect       AdminPermissionEffect @default(ALLOW)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model IndustrialCompany {
+  id                   String                         @id
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+  legalName            String?
+  canonicalName        String
+  displayName          String?
+  normalizedName       String
+  aliases              Json?
+  companyType          String?
+  industryCategory     IndustrialIndustryCategory
+  subcategories        Json?
+  officialWebsite      String?
+  officialDomain       String?
+  gstin                String?
+  panNumber            String?
+  country              String                         @default("India")
+  region               String?
+  state                String?
+  city                 String?
+  headOfficeAddress    String?
+  verificationStatus   IndustrialVerificationStatus   @default(UNVERIFIED)
+  lifecycleStatus      IndustrialLifecycleStatus      @default(DISCOVERED)
+  researchStatus       String                         @default("DISCOVERY")
+  priority             IndustrialPriority             @default(MEDIUM)
+  opportunityScore     Int                            @default(0)
+  isActive             Boolean                        @default(true)
+  notes                String?
+  raw                  Json?
+  plants               IndustrialPlant[]
+  contacts             IndustrialContact[]
+  capabilities         IndustrialCapability[]
+  serviceOpportunities IndustrialServiceOpportunity[]
+  sources              IndustrialSource[]
+  activities           IndustrialActivity[]
+  assignments          IndustrialAssignment[]
+  promotions           IndustrialPromotion[]
+  importRows           IndustrialImportRow[]
+  auditEvents          IndustrialAuditEvent[]
+
+  @@index([normalizedName])
+  @@index([officialDomain])
+  @@index([gstin])
+  @@index([industryCategory, state])
+  @@index([state, city])
+  @@index([region])
+  @@index([verificationStatus])
+  @@index([lifecycleStatus])
+  @@index([priority])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model IndustrialPlant {
+  id                   String                         @id
+  createdAt            DateTime                       @default(now())
+  updatedAt            DateTime                       @updatedAt
+  companyId            String
+  company              IndustrialCompany              @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  plantName            String
+  plantCode            String?
+  normalizedPlantName  String
+  plantType            String?
+  country              String                         @default("India")
+  region               String?
+  state                String?
+  district             String?
+  city                 String?
+  industrialCluster    String?
+  industrialArea       String?
+  address              String?
+  normalizedAddress    String?
+  pincode              String?
+  latitude             Float?
+  longitude            Float?
+  capacityScale        String?
+  verificationStatus   IndustrialVerificationStatus   @default(UNVERIFIED)
+  lifecycleStatus      IndustrialLifecycleStatus      @default(DISCOVERED)
+  opportunityScore     Int                            @default(0)
+  isActive             Boolean                        @default(true)
+  notes                String?
+  raw                  Json?
+  contacts             IndustrialContact[]
+  capabilities         IndustrialCapability[]
+  serviceOpportunities IndustrialServiceOpportunity[]
+  sources              IndustrialSource[]
+  activities           IndustrialActivity[]
+  assignments          IndustrialAssignment[]
+  promotions           IndustrialPromotion[]
+  importRows           IndustrialImportRow[]
+  auditEvents          IndustrialAuditEvent[]
+
+  @@index([companyId])
+  @@index([companyId, normalizedPlantName])
+  @@index([companyId, city])
+  @@index([state, district, city])
+  @@index([region])
+  @@index([industrialCluster])
+  @@index([industrialArea])
+  @@index([plantType])
+  @@index([verificationStatus])
+  @@index([lifecycleStatus])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model IndustrialContact {
+  id                   String                       @id
+  createdAt            DateTime                     @default(now())
+  updatedAt            DateTime                     @updatedAt
+  companyId            String
+  company              IndustrialCompany            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  plantId              String?
+  plant                IndustrialPlant?             @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  personName           String?
+  normalizedPersonName String?
+  designation          String?
+  department           String?
+  phone                String?
+  normalizedPhone      String?
+  whatsapp             String?
+  normalizedWhatsapp   String?
+  email                String?
+  normalizedEmail      String?
+  contactScope         IndustrialContactScope       @default(COMPANY_LEVEL)
+  sourceId             String?
+  source               IndustrialSource?            @relation("IndustrialContactPrimarySource", fields: [sourceId], references: [id], onDelete: SetNull)
+  verificationStatus   IndustrialVerificationStatus @default(UNVERIFIED)
+  consentStatus        String                       @default("unknown")
+  lastVerifiedAt       DateTime?
+  isActive             Boolean                      @default(true)
+  notes                String?
+  raw                  Json?
+  sources              IndustrialSource[]
+  activities           IndustrialActivity[]
+  assignments          IndustrialAssignment[]
+  promotions           IndustrialPromotion[]
+  importRows           IndustrialImportRow[]
+  auditEvents          IndustrialAuditEvent[]
+
+  @@index([companyId])
+  @@index([plantId])
+  @@index([department])
+  @@index([normalizedPhone])
+  @@index([normalizedWhatsapp])
+  @@index([normalizedEmail])
+  @@index([verificationStatus])
+  @@index([consentStatus])
+  @@index([contactScope])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model IndustrialProcess {
+  id               String                     @id
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  name             String
+  normalizedName   String                     @unique
+  industryCategory IndustrialIndustryCategory
+  parentProcessId  String?
+  parentProcess    IndustrialProcess?         @relation("IndustrialProcessHierarchy", fields: [parentProcessId], references: [id], onDelete: SetNull)
+  childProcesses   IndustrialProcess[]        @relation("IndustrialProcessHierarchy")
+  status           String                     @default("ACTIVE")
+  capabilities     IndustrialCapability[]
+
+  @@index([industryCategory])
+  @@index([status])
+}
+
+model IndustrialCapability {
+  id                    String                       @id
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  companyId             String
+  company               IndustrialCompany            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  plantId               String?
+  plant                 IndustrialPlant?             @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  processId             String?
+  process               IndustrialProcess?           @relation(fields: [processId], references: [id], onDelete: SetNull)
+  capabilityType        String
+  industryCategory      IndustrialIndustryCategory
+  subcategory           String?
+  processName           String?
+  product               String?
+  material              String?
+  capacityText          String?
+  qualityCertifications Json?
+  sourceId              String?
+  source                IndustrialSource?            @relation("IndustrialCapabilityPrimarySource", fields: [sourceId], references: [id], onDelete: SetNull)
+  verificationStatus    IndustrialVerificationStatus @default(UNVERIFIED)
+  isActive              Boolean                      @default(true)
+  notes                 String?
+  raw                   Json?
+  sources               IndustrialSource[]
+  importRows            IndustrialImportRow[]
+
+  @@index([companyId])
+  @@index([plantId])
+  @@index([processId])
+  @@index([industryCategory, subcategory])
+  @@index([processName])
+  @@index([product])
+  @@index([material])
+  @@index([verificationStatus])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model IndustrialServiceOpportunity {
+  id                 String                       @id
+  createdAt          DateTime                     @default(now())
+  updatedAt          DateTime                     @updatedAt
+  companyId          String
+  company            IndustrialCompany            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  plantId            String?
+  plant              IndustrialPlant?             @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  serviceType        IndustrialServiceType
+  fitLevel           IndustrialPriority           @default(MEDIUM)
+  score              Int                          @default(0)
+  status             IndustrialOpportunityStatus  @default(IDENTIFIED)
+  reason             String?
+  evidence           String?
+  estimatedNeed      String?
+  sourceId           String?
+  source             IndustrialSource?            @relation("IndustrialOpportunityPrimarySource", fields: [sourceId], references: [id], onDelete: SetNull)
+  verificationStatus IndustrialVerificationStatus @default(UNVERIFIED)
+  qualifiedAt        DateTime?
+  ownerAdminId       String?
+  notes              String?
+  raw                Json?
+  sources            IndustrialSource[]
+  activities         IndustrialActivity[]
+  assignments        IndustrialAssignment[]
+  promotions         IndustrialPromotion[]
+  importRows         IndustrialImportRow[]
+  auditEvents        IndustrialAuditEvent[]
+
+  @@index([companyId])
+  @@index([plantId])
+  @@index([serviceType])
+  @@index([fitLevel])
+  @@index([score])
+  @@index([status])
+  @@index([verificationStatus])
+  @@index([ownerAdminId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model IndustrialSource {
+  id                    String                         @id
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+  sourceType            IndustrialSourceType
+  sourceUrl             String?
+  sourceTitle           String?
+  sourceDomain          String?
+  researchDate          DateTime?
+  capturedAt            DateTime                       @default(now())
+  verificationLevel     IndustrialVerificationStatus   @default(DISCOVERY_ONLY)
+  verificationSource    Boolean                        @default(false)
+  notes                 String?
+  sheetName             String?
+  sheetTab              String?
+  rowNumber             Int?
+  importBatchId         String?
+  importBatch           IndustrialImportBatch?         @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  companyId             String?
+  company               IndustrialCompany?             @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  plantId               String?
+  plant                 IndustrialPlant?               @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  contactId             String?
+  contact               IndustrialContact?             @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  capabilityId          String?
+  capability            IndustrialCapability?          @relation(fields: [capabilityId], references: [id], onDelete: SetNull)
+  serviceOpportunityId  String?
+  serviceOpportunity    IndustrialServiceOpportunity?  @relation(fields: [serviceOpportunityId], references: [id], onDelete: SetNull)
+  raw                   Json?
+  primaryContactFor     IndustrialContact[]            @relation("IndustrialContactPrimarySource")
+  primaryCapabilityFor  IndustrialCapability[]         @relation("IndustrialCapabilityPrimarySource")
+  primaryOpportunityFor IndustrialServiceOpportunity[] @relation("IndustrialOpportunityPrimarySource")
+
+  @@index([sourceType])
+  @@index([sourceDomain])
+  @@index([verificationLevel])
+  @@index([verificationSource])
+  @@index([companyId])
+  @@index([plantId])
+  @@index([contactId])
+  @@index([capabilityId])
+  @@index([serviceOpportunityId])
+  @@index([importBatchId])
+  @@index([capturedAt])
+}
+
+model IndustrialActivity {
+  id                   String                        @id
+  createdAt            DateTime                      @default(now())
+  occurredAt           DateTime                      @default(now())
+  actor                String?
+  action               String
+  entity               String?
+  entityId             String?
+  note                 String?
+  companyId            String?
+  company              IndustrialCompany?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  plantId              String?
+  plant                IndustrialPlant?              @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  contactId            String?
+  contact              IndustrialContact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  serviceOpportunityId String?
+  serviceOpportunity   IndustrialServiceOpportunity? @relation(fields: [serviceOpportunityId], references: [id], onDelete: SetNull)
+  raw                  Json?
+
+  @@index([occurredAt])
+  @@index([actor])
+  @@index([action])
+  @@index([entity, entityId])
+  @@index([companyId])
+  @@index([plantId])
+  @@index([contactId])
+  @@index([serviceOpportunityId])
+}
+
+model IndustrialAssignment {
+  id                   String                        @id
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+  assignedTo           String
+  assignedBy           String?
+  status               String                        @default("ACTIVE")
+  purpose              String
+  companyId            String?
+  company              IndustrialCompany?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  plantId              String?
+  plant                IndustrialPlant?              @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  contactId            String?
+  contact              IndustrialContact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  serviceOpportunityId String?
+  serviceOpportunity   IndustrialServiceOpportunity? @relation(fields: [serviceOpportunityId], references: [id], onDelete: SetNull)
+  dueAt                DateTime?
+  notes                String?
+
+  @@index([assignedTo])
+  @@index([status])
+  @@index([purpose])
+  @@index([companyId])
+  @@index([plantId])
+  @@index([contactId])
+  @@index([serviceOpportunityId])
+  @@index([dueAt])
+}
+
+model IndustrialImportBatch {
+  id                  String                         @id
+  createdAt           DateTime                       @default(now())
+  updatedAt           DateTime                       @updatedAt
+  createdBy           String?
+  status              IndustrialImportStatus         @default(UPLOADED)
+  fileName            String?
+  fileType            String?
+  fileSha256          String?
+  sourceSystem        String?
+  sourceUrl           String?
+  totalRows           Int                            @default(0)
+  validRows           Int                            @default(0)
+  invalidRows         Int                            @default(0)
+  duplicateCandidates Int                            @default(0)
+  newCompanies        Int                            @default(0)
+  newPlants           Int                            @default(0)
+  newContacts         Int                            @default(0)
+  updatedCompanies    Int                            @default(0)
+  committedAt         DateTime?
+  rolledBackAt        DateTime?
+  notes               String?
+  raw                 Json?
+  rows                IndustrialImportRow[]
+  sources             IndustrialSource[]
+  duplicateMatches    IndustrialDuplicateCandidate[]
+  auditEvents         IndustrialAuditEvent[]
+
+  @@index([status])
+  @@index([createdBy])
+  @@index([fileSha256])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model IndustrialImportRow {
+  id                    String                         @id
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+  batchId               String
+  batch                 IndustrialImportBatch          @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  rowNumber             Int
+  status                IndustrialImportRowStatus      @default(PARSED)
+  raw                   Json?
+  normalized            Json?
+  validationIssues      Json?
+  duplicateCandidateIds Json?
+  commitAction          String?
+  companyId             String?
+  company               IndustrialCompany?             @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  plantId               String?
+  plant                 IndustrialPlant?               @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  contactId             String?
+  contact               IndustrialContact?             @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  capabilityId          String?
+  capability            IndustrialCapability?          @relation(fields: [capabilityId], references: [id], onDelete: SetNull)
+  serviceOpportunityId  String?
+  serviceOpportunity    IndustrialServiceOpportunity?  @relation(fields: [serviceOpportunityId], references: [id], onDelete: SetNull)
+  error                 String?
+  duplicateMatches      IndustrialDuplicateCandidate[]
+
+  @@unique([batchId, rowNumber])
+  @@index([batchId])
+  @@index([status])
+  @@index([companyId])
+  @@index([plantId])
+  @@index([contactId])
+  @@index([capabilityId])
+  @@index([serviceOpportunityId])
+}
+
+model IndustrialDuplicateCandidate {
+  id                  String                               @id
+  createdAt           DateTime                             @default(now())
+  updatedAt           DateTime                             @updatedAt
+  batchId             String?
+  batch               IndustrialImportBatch?               @relation(fields: [batchId], references: [id], onDelete: SetNull)
+  rowId               String?
+  row                 IndustrialImportRow?                 @relation(fields: [rowId], references: [id], onDelete: SetNull)
+  candidateType       String
+  existingEntityType  String?
+  existingEntityId    String?
+  incomingEntityType  String?
+  incomingFingerprint String?
+  matchTier           String
+  matchScore          Float                                @default(0)
+  matchReasons        Json?
+  status              IndustrialDuplicateStatus            @default(OPEN)
+  resolvedBy          String?
+  resolvedAt          DateTime?
+  resolutionAction    IndustrialDuplicateResolutionAction?
+  resolutionNote      String?
+  resolutions         IndustrialDuplicateResolution[]
+
+  @@index([batchId])
+  @@index([rowId])
+  @@index([candidateType])
+  @@index([existingEntityType, existingEntityId])
+  @@index([incomingFingerprint])
+  @@index([matchTier])
+  @@index([status])
+  @@index([resolvedBy])
+}
+
+model IndustrialDuplicateResolution {
+  id          String                              @id
+  createdAt   DateTime                            @default(now())
+  candidateId String
+  candidate   IndustrialDuplicateCandidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  action      IndustrialDuplicateResolutionAction
+  resolvedBy  String
+  note        String?
+  raw         Json?
+
+  @@index([candidateId])
+  @@index([resolvedBy])
+  @@index([action])
+}
+
+model IndustrialPromotion {
+  id                   String                        @id
+  createdAt            DateTime                      @default(now())
+  updatedAt            DateTime                      @updatedAt
+  promotionKey         String                        @unique
+  promotionType        IndustrialPromotionType
+  targetEntity         IndustrialPromotionTarget
+  targetEntityId       String
+  status               IndustrialPromotionStatus     @default(PREPARED)
+  companyId            String
+  company              IndustrialCompany             @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  plantId              String?
+  plant                IndustrialPlant?              @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  contactId            String?
+  contact              IndustrialContact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  serviceOpportunityId String?
+  serviceOpportunity   IndustrialServiceOpportunity? @relation(fields: [serviceOpportunityId], references: [id], onDelete: SetNull)
+  createdBy            String?
+  notes                String?
+  raw                  Json?
+
+  @@index([promotionType])
+  @@index([targetEntity, targetEntityId])
+  @@index([status])
+  @@index([companyId])
+  @@index([plantId])
+  @@index([contactId])
+  @@index([serviceOpportunityId])
+  @@index([createdBy])
+}
+
+model IndustrialAuditEvent {
+  id                   String                        @id
+  createdAt            DateTime                      @default(now())
+  actor                String?
+  action               String
+  entity               String?
+  entityId             String?
+  requestId            String?
+  importBatchId        String?
+  importBatch          IndustrialImportBatch?        @relation(fields: [importBatchId], references: [id], onDelete: SetNull)
+  companyId            String?
+  company              IndustrialCompany?            @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  plantId              String?
+  plant                IndustrialPlant?              @relation(fields: [plantId], references: [id], onDelete: SetNull)
+  contactId            String?
+  contact              IndustrialContact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  serviceOpportunityId String?
+  serviceOpportunity   IndustrialServiceOpportunity? @relation(fields: [serviceOpportunityId], references: [id], onDelete: SetNull)
+  note                 String?
+  raw                  Json?
+
+  @@index([createdAt])
+  @@index([actor])
+  @@index([action])
+  @@index([entity, entityId])
+  @@index([requestId])
+  @@index([importBatchId])
+  @@index([companyId])
+  @@index([plantId])
+  @@index([contactId])
+  @@index([serviceOpportunityId])
 }
 
 model SupportTicket {
@@ -444,12 +1205,12 @@ model WhatsappUpload {
 }
 
 model AccountActivationToken {
-  id        String   @id
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String    @id
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   accountId String
   tokenHash String
-  status    String   @default("pending")
+  status    String    @default("pending")
   expiresAt DateTime
   usedAt    DateTime?
   raw       Json?
@@ -459,49 +1220,48 @@ model AccountActivationToken {
   @@index([status])
 }
 
-
 model LogisticsProvider {
-  id                  String   @id
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  status              String   @default("PENDING_CONTRACT")
-  companyName         String
-  contactName         String?
-  phone               String?
-  email               String?
-  website             String?
-  gstNumber           String?
-  panNumber           String?
-  address             String?
-  country             String   @default("India")
-  state               String?
-  city                String?
-  nearbyCities        Json?
-  serviceableCountries Json?
-  serviceableStates   Json?
-  serviceableCities   Json?
-  serviceTypes        Json?
-  specializations     Json?
-  deliveryType        String?
-  speed               String?
-  capacityMt          Float    @default(0)
-  fleetSize           Int      @default(0)
-  availabilityDates   Json?
-  unavailableDates    Json?
-  baseRate            Float    @default(0)
-  ratePerKm           Float    @default(0)
-  ratePerMt           Float    @default(0)
-  minimumCharge       Float    @default(0)
-  loadingCharge       Float    @default(0)
-  insurancePercent    Float    @default(0)
-  fuelSurchargePercent Float   @default(0)
-  gstPercent          Float    @default(0.18)
-  contractStatus      String   @default("NOT_SENT")
-  contractNotes       String?
-  paymentResponsibilityDefault String @default("BUYER")
-  adminNotes          String?
-  adminPricingLocked  Boolean  @default(true)
-  raw                 Json?
+  id                           String   @id
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+  status                       String   @default("PENDING_CONTRACT")
+  companyName                  String
+  contactName                  String?
+  phone                        String?
+  email                        String?
+  website                      String?
+  gstNumber                    String?
+  panNumber                    String?
+  address                      String?
+  country                      String   @default("India")
+  state                        String?
+  city                         String?
+  nearbyCities                 Json?
+  serviceableCountries         Json?
+  serviceableStates            Json?
+  serviceableCities            Json?
+  serviceTypes                 Json?
+  specializations              Json?
+  deliveryType                 String?
+  speed                        String?
+  capacityMt                   Float    @default(0)
+  fleetSize                    Int      @default(0)
+  availabilityDates            Json?
+  unavailableDates             Json?
+  baseRate                     Float    @default(0)
+  ratePerKm                    Float    @default(0)
+  ratePerMt                    Float    @default(0)
+  minimumCharge                Float    @default(0)
+  loadingCharge                Float    @default(0)
+  insurancePercent             Float    @default(0)
+  fuelSurchargePercent         Float    @default(0)
+  gstPercent                   Float    @default(0.18)
+  contractStatus               String   @default("NOT_SENT")
+  contractNotes                String?
+  paymentResponsibilityDefault String   @default("BUYER")
+  adminNotes                   String?
+  adminPricingLocked           Boolean  @default(true)
+  raw                          Json?
 
   @@index([status])
   @@index([city])
