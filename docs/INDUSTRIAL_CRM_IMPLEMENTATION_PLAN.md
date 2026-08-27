@@ -129,6 +129,8 @@ Deferred:
 
 ## Phase 3: Normalization And Duplicate Engine
 
+Status: completed in this repository as the normalization and duplicate-detection foundation on 2026-08-27.
+
 Scope:
 - Implement deterministic normalization before imports.
 - Implement duplicate detection without committing master records.
@@ -161,6 +163,18 @@ Required tests:
 - Tata Steel plants remain separate under one company.
 - Board-line phone does not automatically merge unrelated contacts.
 - Missing GSTIN/domain falls back to weaker candidate tiers.
+
+Completed in this Phase 3 pass:
+- Added `lib/industrial/` with reusable normalizers, taxonomy mappers, typed normalized staging inputs, pure duplicate scoring, and a bounded Prisma candidate matcher.
+- Implemented company, domain, GSTIN, India phone, email, location, department, industry/process, and service opportunity normalization.
+- Implemented hierarchical company, plant, and contact duplicate analysis with weighted signals, conflicts, confidence, and recommended dispositions.
+- Added plant-aware safeguards for same-company/different-plant cases.
+- Added a matcher that narrows on indexed Prisma fields with explicit projections and `take: 25` before scoring.
+- Added `scripts/industrial-intelligence-phase3-tests.js`.
+- Created `docs/INDUSTRIAL_CRM_PHASE3_RESULT.md`.
+
+Deferred:
+- No importer, duplicate review UI, duplicate resolution mutation, CRM promotion, Outreach promotion, Marketplace change, schema change, migration, or data import was added.
 
 ## Phase 4: Import Dry-Run
 
