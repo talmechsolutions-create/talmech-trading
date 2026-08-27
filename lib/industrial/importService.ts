@@ -6,6 +6,7 @@ import { industrialPaginationMeta, industrialOffset, parseIndustrialLimit } from
 import { normalizeAddressText } from './text';
 import { buildIndustrialDryRun, toPersistedRowShape } from './importDryRun';
 import { parseIndustrialImportFile, suggestColumnMapping, suggestionsToMapping } from './importParsing';
+import { buildTalmechFullWorkbookDryRun, TALMECH_WORKBOOK_PROFILE } from './workbookProfile';
 import {
   IndustrialColumnMapping,
   IndustrialCommitResult,
@@ -75,7 +76,7 @@ function selectedSheet(raw: IndustrialImportBatchRaw, sheetName?: string): Indus
 
 function safeMode(value: unknown): IndustrialImportMode {
   const mode = String(value || 'GENERIC_MAPPING');
-  return ['COMPANY_PLANT_MASTER', 'CONTACT_ENRICHMENT', 'DISCOVERY_QUEUE', 'GENERIC_MAPPING'].includes(mode) ? (mode as IndustrialImportMode) : 'GENERIC_MAPPING';
+  return ['COMPANY_PLANT_MASTER', 'CONTACT_ENRICHMENT', 'DISCOVERY_QUEUE', 'GENERIC_MAPPING', 'TALMECH_FULL_RESEARCH_WORKBOOK'].includes(mode) ? (mode as IndustrialImportMode) : 'GENERIC_MAPPING';
 }
 
 export function parseIndustrialImportListFilters(params: URLSearchParams): IndustrialImportListFilters {
@@ -112,6 +113,7 @@ export async function createIndustrialImportBatch(input: {
   const mode = safeMode(input.importMode || parsed.sheets[0]?.suggestedMode);
   const firstProcessable = parsed.sheets.find((sheet) => !sheet.shouldExclude) || parsed.sheets[0];
   const suggestions = suggestColumnMapping(firstProcessable?.headers || []);
+  const sheetRoles = TALMECH_WORKBOOK_PROFILE.classifySheets(parsed.sheets);
   const raw: IndustrialImportBatchRaw = {
     phase4: {
       status: 'MAPPING_REQUIRED',
@@ -120,6 +122,38 @@ export async function createIndustrialImportBatch(input: {
       mapping: suggestionsToMapping(suggestions),
       sheets: parsed.sheets,
       suggestions,
+      workbookProfileSummary:
+        mode === 'TALMECH_FULL_RESEARCH_WORKBOOK'
+          ? {
+              profile: 'TALMECH_FULL_RESEARCH_WORKBOOK',
+              orderedSheets: TALMECH_WORKBOOK_PROFILE.canonicalOrder,
+              canonicalSheetsProcessed: [],
+              derivedSheetsExcluded: sheetRoles.derivedSheets,
+              analyticsSheetsExcluded: sheetRoles.analyticsSheets,
+              missingCanonicalSheets: sheetRoles.missingCanonicalSheets,
+              consolidatedSummary: {
+                totalSourceRows: 0,
+                validRows: 0,
+                invalidRows: 0,
+                newCompanies: 0,
+                existingCompanyMatches: 0,
+                possibleCompanyDuplicates: 0,
+                newPlants: 0,
+                existingPlantMatches: 0,
+                possiblePlantDuplicates: 0,
+                sameCompanyDifferentPlant: 0,
+                newContacts: 0,
+                existingContactMatches: 0,
+                possibleContactDuplicates: 0,
+                newCapabilities: 0,
+                newServiceOpportunities: 0,
+                newSources: 0,
+                manualReviewRequired: 0,
+                rejectedRows: 0,
+                committedRows: 0,
+              },
+            }
+          : undefined,
       rollbackDesign: 'Rollback is non-destructive by default: records created by a batch are traceable through row links; pre-existing records are never deleted merely because a batch touched them.',
     },
   };
@@ -241,24 +275,25 @@ export async function runIndustrialImportDryRun(batchId: string, actor: string) 
   const raw = batchRaw(batch);
   if (!raw?.phase4.mapping) throw new Error('IMPORT_MAPPING_REQUIRED');
   const sheet = selectedSheet(raw);
-  if (!sheet || sheet.shouldExclude) throw new Error('IMPORT_SHEET_NOT_PROCESSABLE');
+  if (raw.phase4.importMode !== 'TALMECH_FULL_RESEARCH_WORKBOOK' && (!sheet || sheet.shouldExclude)) throw new Error('IMPORT_SHEET_NOT_PROCESSABLE');
 
   await prisma.industrialImportBatch.update({ where: { id: batchId }, data: { status: 'VALIDATED', raw: { ...raw, phase4: { ...raw.phase4, status: 'DRY_RUN_PROCESSING' } } as unknown as Prisma.InputJsonValue } });
-  await auditIndustrialAction({ actor, action: 'INDUSTRIAL_IMPORT_DRY_RUN_STARTED', entity: 'IndustrialImportBatch', entityId: batchId, importBatchId: batchId, raw: { sheetName: sheet.name } });
+  await auditIndustrialAction({ actor, action: 'INDUSTRIAL_IMPORT_DRY_RUN_STARTED', entity: 'IndustrialImportBatch', entityId: batchId, importBatchId: batchId, raw: { sheetName: sheet?.name, profile: raw.phase4.importMode } });
 
-  const dryRun = await buildIndustrialDryRun(sheet, raw.phase4.mapping);
+  const profileDryRun = raw.phase4.importMode === 'TALMECH_FULL_RESEARCH_WORKBOOK' ? await buildTalmechFullWorkbookDryRun(raw.phase4.sheets) : null;
+  const dryRun = profileDryRun || (await buildIndustrialDryRun(sheet as IndustrialParsedSheet, raw.phase4.mapping));
   await prisma.$transaction([
     prisma.industrialDuplicateCandidate.deleteMany({ where: { batchId } }),
     prisma.industrialImportRow.deleteMany({ where: { batchId } }),
   ]);
 
-  for (const row of dryRun.rows) {
+  for (const [index, row] of dryRun.rows.entries()) {
     const persisted = toPersistedRowShape(row);
     const createdRow = await prisma.industrialImportRow.create({
       data: {
         id: `IIR-${randomUUID()}`,
         batchId,
-        rowNumber: row.rowNumber,
+        rowNumber: profileDryRun ? index + 2 : row.rowNumber,
         status: toImportRowStatus(row),
         raw: row.raw as unknown as Prisma.InputJsonValue,
         normalized: persisted as unknown as Prisma.InputJsonValue,
@@ -276,7 +311,7 @@ export async function runIndustrialImportDryRun(batchId: string, actor: string) 
           rowId: createdRow.id,
           candidateType: row.classifications.join(','),
           incomingEntityType: 'IMPORT_ROW',
-          incomingFingerprint: `${batchId}:${row.rowNumber}`,
+          incomingFingerprint: `${batchId}:${row.sourceSheet}:${row.rowNumber}`,
           matchTier: row.classifications.includes('MANUAL_REVIEW') ? 'MANUAL_REVIEW' : 'EXACT_OR_INDEXED',
           matchScore: row.duplicateSummary.topScore,
           matchReasons: { signals: row.duplicateSummary.signals, conflicts: row.duplicateSummary.conflicts } as unknown as Prisma.InputJsonValue,
@@ -285,7 +320,7 @@ export async function runIndustrialImportDryRun(batchId: string, actor: string) 
     }
   }
 
-  const completedRaw: IndustrialImportBatchRaw = { phase4: { ...raw.phase4, status: dryRun.summary.manualReviewRequired ? 'REVIEW_REQUIRED' : 'DRY_RUN_READY', dryRunSummary: dryRun.summary } };
+  const completedRaw: IndustrialImportBatchRaw = { phase4: { ...raw.phase4, status: dryRun.summary.manualReviewRequired ? 'REVIEW_REQUIRED' : 'DRY_RUN_READY', dryRunSummary: dryRun.summary, workbookProfileSummary: profileDryRun?.profileSummary || raw.phase4.workbookProfileSummary } };
   const updated = await prisma.industrialImportBatch.update({
     where: { id: batchId },
     data: {
@@ -348,34 +383,64 @@ async function createFromRow(row: Prisma.IndustrialImportRowGetPayload<{ select:
   const payload = row.normalized as unknown as { normalized?: any; dryRun?: any };
   const candidate = payload.normalized;
   if (!candidate) throw new Error('NORMALIZED_ROW_MISSING');
-  const company = await prisma.industrialCompany.create({
-    data: {
-      id: `IC-${randomUUID()}`,
-      canonicalName: candidate.company.companyName.displayName || candidate.company.originalName,
-      legalName: candidate.company.companyName.original || null,
-      normalizedName: candidate.company.companyName.normalized,
-      officialWebsite: candidate.company.officialDomain?.original || null,
-      officialDomain: candidate.company.officialDomain?.valid ? candidate.company.officialDomain.normalized : null,
-      gstin: candidate.company.gstin?.valid ? candidate.company.gstin.normalized : null,
-      country: candidate.company.location?.country?.normalized || 'India',
-      state: candidate.company.location?.state?.normalized || null,
-      city: candidate.company.location?.city?.normalized || null,
-      headOfficeAddress: candidate.company.location?.address?.original || null,
-      industryCategory: payload.dryRun?.industryCategory || 'OTHER_MANUFACTURING',
-      verificationStatus: payload.dryRun?.verificationStatus || 'AUTO_NORMALIZED',
-      priority: payload.dryRun?.priority || 'MEDIUM',
-      opportunityScore: payload.dryRun?.opportunityScore || 0,
-      raw: { createdByImportBatch: row.batchId, importRowId: row.id, actor } as Prisma.InputJsonValue,
-    },
-    select: { id: true },
-  });
-  const plant = candidate.plant
-    ? await prisma.industrialPlant.create({
+  const companyWhere: Prisma.IndustrialCompanyWhereInput[] = [
+    candidate.company.gstin?.valid ? { gstin: candidate.company.gstin.normalized } : null,
+    candidate.company.officialDomain?.valid ? { officialDomain: candidate.company.officialDomain.normalized } : null,
+    candidate.company.companyName.normalized ? { normalizedName: candidate.company.companyName.normalized, city: candidate.company.location?.city?.normalized || null } : null,
+  ].filter(Boolean) as Prisma.IndustrialCompanyWhereInput[];
+  const existingCompany = companyWhere.length ? await prisma.industrialCompany.findFirst({ where: { OR: companyWhere }, select: { id: true } }) : null;
+  const company = existingCompany
+    ? await prisma.industrialCompany.update({
+        where: { id: existingCompany.id },
         data: {
-          id: `IP-${randomUUID()}`,
-          companyId: company.id,
-          plantName: candidate.plant.plantName?.displayName || candidate.company.companyName.displayName,
-          normalizedPlantName: candidate.plant.plantName?.normalized || candidate.company.companyName.normalized,
+          officialWebsite: candidate.company.officialDomain?.original || undefined,
+          officialDomain: candidate.company.officialDomain?.valid ? candidate.company.officialDomain.normalized : undefined,
+          gstin: candidate.company.gstin?.valid ? candidate.company.gstin.normalized : undefined,
+          state: candidate.company.location?.state?.normalized || undefined,
+          city: candidate.company.location?.city?.normalized || undefined,
+          opportunityScore: Math.max(Number(payload.dryRun?.opportunityScore || 0), 0),
+          raw: { enrichedByImportBatch: row.batchId, importRowId: row.id, actor } as Prisma.InputJsonValue,
+        },
+        select: { id: true },
+      })
+    : await prisma.industrialCompany.create({
+        data: {
+          id: `IC-${randomUUID()}`,
+          canonicalName: candidate.company.companyName.displayName || candidate.company.originalName,
+          legalName: candidate.company.companyName.original || null,
+          normalizedName: candidate.company.companyName.normalized,
+          officialWebsite: candidate.company.officialDomain?.original || null,
+          officialDomain: candidate.company.officialDomain?.valid ? candidate.company.officialDomain.normalized : null,
+          gstin: candidate.company.gstin?.valid ? candidate.company.gstin.normalized : null,
+          country: candidate.company.location?.country?.normalized || 'India',
+          state: candidate.company.location?.state?.normalized || null,
+          city: candidate.company.location?.city?.normalized || null,
+          headOfficeAddress: candidate.company.location?.address?.original || null,
+          industryCategory: payload.dryRun?.industryCategory || 'OTHER_MANUFACTURING',
+          verificationStatus: payload.dryRun?.verificationStatus || 'AUTO_NORMALIZED',
+          priority: payload.dryRun?.priority || 'MEDIUM',
+          opportunityScore: payload.dryRun?.opportunityScore || 0,
+          raw: { createdByImportBatch: row.batchId, importRowId: row.id, actor } as Prisma.InputJsonValue,
+        },
+        select: { id: true },
+      });
+  const plant = candidate.plant
+    ? await (async () => {
+        const normalizedPlantName = candidate.plant.plantName?.normalized || candidate.company.companyName.normalized;
+        const plantOr = [
+          candidate.plant.location?.city?.normalized ? { city: candidate.plant.location.city.normalized } : null,
+          candidate.plant.location?.pincode?.valid ? { pincode: candidate.plant.location.pincode.normalized } : null,
+          candidate.plant.location?.address?.normalized ? { normalizedAddress: candidate.plant.location.address.normalized } : null,
+        ].filter(Boolean) as Prisma.IndustrialPlantWhereInput[];
+        const existingPlant = await prisma.industrialPlant.findFirst({
+          where: {
+            companyId: company.id,
+            normalizedPlantName,
+            ...(plantOr.length ? { OR: plantOr } : {}),
+          },
+          select: { id: true },
+        });
+        const data = {
           state: candidate.plant.location?.state?.normalized || null,
           district: candidate.plant.location?.district?.normalized || null,
           city: candidate.plant.location?.city?.normalized || null,
@@ -385,15 +450,36 @@ async function createFromRow(row: Prisma.IndustrialImportRowGetPayload<{ select:
           pincode: candidate.plant.location?.pincode?.valid ? candidate.plant.location.pincode.normalized : null,
           plantType: payload.dryRun?.raw?.['Plant Type'] || null,
           verificationStatus: payload.dryRun?.verificationStatus || 'AUTO_NORMALIZED',
-          raw: { createdByImportBatch: row.batchId, importRowId: row.id } as Prisma.InputJsonValue,
-        },
-        select: { id: true },
-      })
+          raw: { [existingPlant ? 'enrichedByImportBatch' : 'createdByImportBatch']: row.batchId, importRowId: row.id } as Prisma.InputJsonValue,
+        };
+        return existingPlant
+          ? prisma.industrialPlant.update({ where: { id: existingPlant.id }, data, select: { id: true } })
+          : prisma.industrialPlant.create({
+              data: {
+                id: `IP-${randomUUID()}`,
+                companyId: company.id,
+                plantName: candidate.plant.plantName?.displayName || candidate.company.companyName.displayName,
+                normalizedPlantName,
+                ...data,
+              },
+              select: { id: true },
+            });
+      })()
     : null;
   const contact = candidate.contact
-    ? await prisma.industrialContact.create({
-        data: {
-          id: `ICT-${randomUUID()}`,
+    ? await (async () => {
+        const existingContact = await prisma.industrialContact.findFirst({
+          where: {
+            companyId: company.id,
+            OR: [
+              candidate.contact.phone?.valid ? { normalizedPhone: candidate.contact.phone.normalized } : null,
+              candidate.contact.whatsapp?.valid ? { normalizedWhatsapp: candidate.contact.whatsapp.normalized } : null,
+              candidate.contact.email?.valid ? { normalizedEmail: candidate.contact.email.normalized } : null,
+            ].filter(Boolean) as Prisma.IndustrialContactWhereInput[],
+          },
+          select: { id: true },
+        });
+        const data = {
           companyId: company.id,
           plantId: plant?.id || null,
           personName: candidate.contact.personName?.original || null,
@@ -407,10 +493,12 @@ async function createFromRow(row: Prisma.IndustrialImportRowGetPayload<{ select:
           email: candidate.contact.email?.original || null,
           normalizedEmail: candidate.contact.email?.valid ? candidate.contact.email.normalized : null,
           verificationStatus: payload.dryRun?.verificationStatus || 'AUTO_NORMALIZED',
-          raw: { createdByImportBatch: row.batchId, importRowId: row.id } as Prisma.InputJsonValue,
-        },
-        select: { id: true },
-      })
+          raw: { [existingContact ? 'enrichedByImportBatch' : 'createdByImportBatch']: row.batchId, importRowId: row.id } as Prisma.InputJsonValue,
+        };
+        return existingContact
+          ? prisma.industrialContact.update({ where: { id: existingContact.id }, data, select: { id: true } })
+          : prisma.industrialContact.create({ data: { id: `ICT-${randomUUID()}`, ...data }, select: { id: true } });
+      })()
     : null;
   await prisma.industrialImportRow.update({
     where: { id: row.id },
@@ -464,4 +552,3 @@ export async function commitIndustrialImportBatch(batchId: string, actor: string
   await auditIndustrialAction({ actor, action: result.errors.length ? 'INDUSTRIAL_IMPORT_COMMIT_FAILED' : 'INDUSTRIAL_IMPORT_COMMIT_COMPLETED', entity: 'IndustrialImportBatch', entityId: batchId, importBatchId: batchId, raw: result as unknown as Record<string, unknown> });
   return result;
 }
-

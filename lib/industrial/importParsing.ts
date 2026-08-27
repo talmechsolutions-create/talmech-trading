@@ -147,9 +147,12 @@ function parseWorksheet(xml: string, sharedStrings: string[]) {
       const body = cellMatch[2];
       const index = columnIndex(attr(tag, 'r'));
       const type = attr(tag, 't');
-      const rawValue = /<v>([\s\S]*?)<\/v>/.exec(body)?.[1] || /<t\b[^>]*>([\s\S]*?)<\/t>/.exec(body)?.[1] || '';
+      const formulaText = /<f\b[^>]*>([\s\S]*?)<\/f>/.exec(body)?.[1] || '';
+      const rawValue = /<v>([\s\S]*?)<\/v>/.exec(body)?.[1] || /<t\b[^>]*>([\s\S]*?)<\/t>/.exec(body)?.[1] || (formulaText ? `=${formulaText}` : '');
       const decoded = xmlDecode(rawValue);
-      row[index] = type === 's' ? sharedStrings[Number.parseInt(decoded, 10)] || '' : decoded;
+      if (type === 's') row[index] = sharedStrings[Number.parseInt(decoded, 10)] || '';
+      else if (type === 'b') row[index] = decoded === '1' ? 'TRUE' : 'FALSE';
+      else row[index] = decoded;
     }
     if (row.some((item) => item)) table.push(row.map((item) => neutralizeSpreadsheetFormula(item || '')));
   }
@@ -226,9 +229,9 @@ const mappingRules: Array<[RegExp, IndustrialImportTargetField, IndustrialColumn
   [/\b(public contact person|contact person)\b/, 'contactPerson', 'HIGH'],
   [/\b(designation|contact type)\b/, 'designation', 'HIGH'],
   [/\bdepartment\b/, 'department', 'HIGH'],
-  [/\b(public phone|phone|mobile)\b/, 'phone', 'HIGH'],
+  [/\bpublic phone\b|^phone$|^mobile$|\bmobile\b/, 'phone', 'HIGH'],
   [/\bwhatsapp\b/, 'whatsapp', 'HIGH'],
-  [/\b(public business email|public email|email)\b/, 'email', 'HIGH'],
+  [/\bpublic business email\b|\bpublic email\b|^email$/, 'email', 'HIGH'],
   [/\b(forging type products|products processes|processes capability|process product evidence|process|capability)\b/, 'processes', 'HIGH'],
   [/\b(products components|products|grades standards)\b/, 'products', 'MEDIUM'],
   [/\b(capacity scale|monthly capacity|capacity)\b/, 'capacity', 'HIGH'],
@@ -242,11 +245,23 @@ const mappingRules: Array<[RegExp, IndustrialImportTargetField, IndustrialColumn
   [/\bverification status\b/, 'verificationStatus', 'HIGH'],
   [/\bcontact verification\b/, 'contactVerification', 'HIGH'],
   [/\bresearch status\b/, 'researchStatus', 'HIGH'],
-  [/\bsource type\b/, 'sourceType', 'HIGH'],
+  [/\b(source type|source category)\b/, 'sourceType', 'HIGH'],
   [/\bprimary source url\b/, 'primarySourceUrl', 'HIGH'],
   [/\bsecondary source url\b/, 'secondarySourceUrl', 'HIGH'],
   [/\bresearch date\b/, 'researchDate', 'HIGH'],
   [/\b(notes next action|notes)\b/, 'notes', 'HIGH'],
+  [/\bexisting phone contact count\b/, 'existingPhoneContactCount', 'HIGH'],
+  [/\b(existing contact labels people|existing contact names labels|other saved aliases|original saved contact)\b/, 'existingContactLabels', 'HIGH'],
+  [/\b(existing phone numbers|phone s)\b/, 'existingPhoneNumbers', 'HIGH'],
+  [/\b(existing roles departments|existing roles|role department)\b/, 'existingRolesDepartments', 'HIGH'],
+  [/\b(existing contact emails|email s)\b/, 'existingContactEmails', 'HIGH'],
+  [/\bphone match status\b/, 'phoneMatchStatus', 'HIGH'],
+  [/\b(best existing crm priority|crm priority)\b/, 'bestExistingCrmPriority', 'HIGH'],
+  [/\b(matched master prospect|current master match)\b/, 'matchedMasterProspect', 'HIGH'],
+  [/\bmaster match score\b/, 'masterMatchScore', 'HIGH'],
+  [/\bmaster match confidence\b/, 'masterMatchConfidence', 'HIGH'],
+  [/\bperson company parse confidence\b/, 'personCompanyParseConfidence', 'HIGH'],
+  [/\bpromotion decision\b/, 'promotionDecision', 'HIGH'],
 ];
 
 export function suggestColumnMapping(headers: string[]): IndustrialColumnSuggestion[] {
@@ -269,6 +284,7 @@ export function suggestionsToMapping(suggestions: IndustrialColumnSuggestion[]) 
 
 export function suggestImportMode(sheetName: string, headers: string[]): IndustrialImportMode {
   const text = `${sheetName} ${headers.join(' ')}`.toLowerCase();
+  if (/talmech full research workbook/.test(text)) return 'TALMECH_FULL_RESEARCH_WORKBOOK';
   if (/phone|contact match|contact/.test(text) && !/master/.test(text)) return 'CONTACT_ENRICHMENT';
   if (/discovery|queue|regional/.test(text)) return 'DISCOVERY_QUEUE';
   if (/master|forging|steel|plant/.test(text)) return 'COMPANY_PLANT_MASTER';

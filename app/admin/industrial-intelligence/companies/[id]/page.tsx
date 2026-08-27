@@ -12,6 +12,7 @@ import {
   formatIndustrialLabel,
   jsonList,
 } from '@/components/industrial/IndustrialAdminComponents';
+import { IndustrialCompanyActions } from '@/components/industrial/IndustrialManagementClient';
 import { ADMIN_COOKIE } from '@/lib/adminSecurity';
 import { getIndustrialCompanyDetail } from '@/lib/industrialIntelligenceService';
 import { requireIndustrialPermissionForToken } from '@/lib/security/industrialPermissions';
@@ -26,6 +27,7 @@ export const dynamic = 'force-dynamic';
 export default async function IndustrialCompanyDetailPage({ params }: { params: { id: string } }) {
   const access = requireIndustrialPermissionForToken(cookies().get(ADMIN_COOKIE)?.value, 'industrial_intelligence.view');
   if (!access.ok) return <IndustrialAccessDenied message={access.message} />;
+  const editAccess = requireIndustrialPermissionForToken(cookies().get(ADMIN_COOKIE)?.value, 'industrial_intelligence.edit');
 
   const result = await getIndustrialCompanyDetail(params.id);
   const company = result.data;
@@ -78,6 +80,8 @@ export default async function IndustrialCompanyDetailPage({ params }: { params: 
                 <Field label="Updated" value={formatDate(company.updatedAt)} />
               </div>
             </section>
+
+            {editAccess.ok ? <IndustrialCompanyActions companyId={company.id} /> : <p className="notice slimNotice">Company edit actions require industrial_intelligence.edit permission.</p>}
 
             <section className="panel">
               <div className="industrialPanelHead"><h2>Plants</h2><span className="muted">{company._count.plants} total, showing latest 25</span></div>

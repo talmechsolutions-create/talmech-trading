@@ -207,7 +207,10 @@ function dryRunSummary(rows: IndustrialDryRunRow[]): IndustrialDryRunSummary {
   };
 }
 
-export async function buildIndustrialDryRun(sheet: IndustrialParsedSheet, mapping: IndustrialColumnMapping) {
+type CandidateMatcher = typeof findIndustrialDuplicateCandidates;
+
+export async function buildIndustrialDryRun(sheet: IndustrialParsedSheet, mapping: IndustrialColumnMapping, options: { findCandidates?: CandidateMatcher } = {}) {
+  const findCandidates = options.findCandidates || findIndustrialDuplicateCandidates;
   const rows: IndustrialDryRunRow[] = [];
   for (let index = 0; index < sheet.rows.length; index += 1) {
     const raw = sheet.rows[index];
@@ -262,7 +265,7 @@ export async function buildIndustrialDryRun(sheet: IndustrialParsedSheet, mappin
       opportunities,
     };
     const validationIssues = validateCandidate(candidate);
-    const matches = validationIssues.length ? { companyCandidates: [], plantCandidates: [], contactCandidates: [] } : await findIndustrialDuplicateCandidates(candidate);
+    const matches = validationIssues.length ? { companyCandidates: [], plantCandidates: [], contactCandidates: [] } : await findCandidates(candidate);
     const classifications = classifyFromMatches(matches as Awaited<ReturnType<typeof findIndustrialDuplicateCandidates>>, validationIssues);
     const topAnalyses = [...matches.companyCandidates, ...matches.plantCandidates, ...matches.contactCandidates].slice(0, 3);
     const action = plannedAction(classifications);
@@ -298,4 +301,3 @@ export function toPersistedRowShape(row: IndustrialDryRunRow): IndustrialPersist
     services: (row.normalized?.opportunities || []).map((opportunity) => opportunity.serviceType.normalized as IndustrialServiceType),
   };
 }
-

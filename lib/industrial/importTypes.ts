@@ -9,7 +9,7 @@ import type {
 } from '@prisma/client';
 import type { NormalizedIndustrialCandidateInput } from './types';
 
-export const industrialImportModes = ['COMPANY_PLANT_MASTER', 'CONTACT_ENRICHMENT', 'DISCOVERY_QUEUE', 'GENERIC_MAPPING'] as const;
+export const industrialImportModes = ['COMPANY_PLANT_MASTER', 'CONTACT_ENRICHMENT', 'DISCOVERY_QUEUE', 'GENERIC_MAPPING', 'TALMECH_FULL_RESEARCH_WORKBOOK'] as const;
 export type IndustrialImportMode = (typeof industrialImportModes)[number];
 
 export const industrialImportTargetFields = [
@@ -50,6 +50,18 @@ export const industrialImportTargetFields = [
   'secondarySourceUrl',
   'researchDate',
   'notes',
+  'existingPhoneContactCount',
+  'existingContactLabels',
+  'existingPhoneNumbers',
+  'existingRolesDepartments',
+  'existingContactEmails',
+  'phoneMatchStatus',
+  'bestExistingCrmPriority',
+  'matchedMasterProspect',
+  'masterMatchScore',
+  'masterMatchConfidence',
+  'personCompanyParseConfidence',
+  'promotionDecision',
   'exclude',
 ] as const;
 
@@ -158,6 +170,18 @@ export type IndustrialDryRunSummary = {
   committedRows: number;
 };
 
+export type TalmechWorkbookPhaseKey = 'FORGING_MASTER' | 'STEEL_MASTER' | 'PHONE_CONTACT_ENRICHMENT' | 'DISCOVERY_QUEUE';
+
+export type TalmechWorkbookProfileSummary = {
+  profile: 'TALMECH_FULL_RESEARCH_WORKBOOK';
+  orderedSheets: string[];
+  canonicalSheetsProcessed: Array<{ phase: TalmechWorkbookPhaseKey; sheetName: string; summary: IndustrialDryRunSummary }>;
+  derivedSheetsExcluded: string[];
+  analyticsSheetsExcluded: string[];
+  missingCanonicalSheets: string[];
+  consolidatedSummary: IndustrialDryRunSummary;
+};
+
 export type IndustrialImportBatchRaw = {
   phase4: {
     status: string;
@@ -167,6 +191,7 @@ export type IndustrialImportBatchRaw = {
     sheets: IndustrialParsedSheet[];
     suggestions?: IndustrialColumnSuggestion[];
     dryRunSummary?: IndustrialDryRunSummary;
+    workbookProfileSummary?: TalmechWorkbookProfileSummary;
     reviewDecisions?: Record<string, IndustrialPlannedAction>;
     commitSummary?: Record<string, number>;
     rollbackDesign?: string;
@@ -211,4 +236,3 @@ export function toImportRowStatus(row: IndustrialDryRunRow): IndustrialImportRow
   if (row.reviewStatus === 'REVIEW_REQUIRED') return 'DUPLICATE_CANDIDATE';
   return 'READY_TO_COMMIT';
 }
-

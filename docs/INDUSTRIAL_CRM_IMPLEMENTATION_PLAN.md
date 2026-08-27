@@ -241,7 +241,59 @@ Completed in this Phase 4 pass:
 Deferred:
 - No real workbook import, sample manufacturer seed, duplicate review UI editing, existing-record update/merge commit behavior, Outreach promotion, CRM promotion, Marketplace change, schema change, migration, or destructive rollback was added.
 
-## Phase 5: Duplicate Review And Approval
+## Phase 4.5: Staging Activation And Importer Verification
+
+Status: completed in this repository as a pre-real-workbook safety verification pass on 2026-08-27.
+
+Scope:
+- Review database environment without exposing credentials.
+- Review Phase 1 migration against the schema.
+- Review RBAC bootstrap behavior.
+- Harden and verify XLSX parser compatibility.
+- Create a synthetic workbook fixture only.
+- Verify importer dry-run behavior without touching real Talmech data.
+
+Completed in this Phase 4.5 pass:
+- Classified the configured database as remote/unknown-possible-production, so no migration was applied and no persistence test was run against it.
+- Reviewed the Phase 1 migration as additive and non-destructive to CRM, Outreach, and Marketplace tables.
+- Documented RBAC bootstrap behavior through `INDUSTRIAL_INTELLIGENCE_PERMISSIONS`.
+- Hardened XLSX parsing for formula cells without cached values, booleans, and `Source Category` mapping.
+- Added `scripts/industrial-intelligence-phase4-5-tests.js` with a synthetic multi-sheet workbook covering Master Prospects, Steel Master - India, and Dashboard.
+- Verified sheet discovery, sheet exclusion, mapping, normalization, validation, duplicate classifications, dry-run summary, commit safeguards, audit redaction coverage, and no CRM/Outreach side effects.
+- Created `docs/INDUSTRIAL_CRM_PHASE4_5_RESULT.md`.
+
+Deferred:
+- No migration apply, real workbook import, production persistence test, commit of real or synthetic master records, Phase 5 duplicate-review UI, CRM promotion, Outreach promotion, Marketplace change, or destructive rollback was added.
+
+## Phase 5: Industrial Intelligence Management And Real Workbook Preparation
+
+Status: completed in this repository as the operational management and full-workbook profile pass on 2026-08-27.
+
+Scope:
+- Build manual company, plant, contact, research prospect, capability/process, service opportunity, and source/evidence management workflows.
+- Add the reusable `TALMECH_FULL_RESEARCH_WORKBOOK` import profile.
+- Preserve the generic XLSX/CSV importer.
+- Prepare safe real-workbook dry-run behavior without importing real data.
+
+Completed in this Phase 5 pass:
+- Added server-side manual create/update services using Phase 3 normalization and duplicate detection.
+- Added server-authorized mutating APIs for companies, plants, contacts, research prospects, and company-level related records.
+- Added admin quick actions on the Industrial dashboard and company detail page.
+- Enforced `industrial_intelligence.edit` for manual writes, `industrial_intelligence.verify` for verification evidence, and retained `industrial_intelligence.import` for import workflows.
+- Added duplicate-review responses for manual company, plant, and contact creation.
+- Added create-anyway-with-justification and use-existing-record handling.
+- Added verification downgrade protection requiring explicit justification.
+- Added `TALMECH_FULL_RESEARCH_WORKBOOK` with canonical ordering: `Master Prospects`, `Steel Master - India`, `Phone CRM - Manufacturing`, `Regional Discovery Queue`.
+- Added derived/control sheet classification so those sheets do not independently create companies.
+- Added per-phase and consolidated full-workbook dry-run summaries.
+- Added repeat-import enrichment checks in the commit path so exact matches update/enrich existing records rather than blindly duplicating.
+- Added `scripts/industrial-intelligence-phase5-tests.js`.
+- Created `docs/INDUSTRIAL_CRM_PHASE5_RESULT.md`.
+
+Deferred:
+- No migration apply, real workbook upload, staging data import, production data import, CRM promotion, Outreach promotion, Marketplace change, or branch merge was performed.
+
+## Phase 6: Duplicate Review And Approval
 
 Scope:
 - Let admin resolve duplicate candidates before commit.

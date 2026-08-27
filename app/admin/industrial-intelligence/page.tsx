@@ -8,6 +8,7 @@ import {
   IndustrialSchemaNotice,
   formatIndustrialLabel,
 } from '@/components/industrial/IndustrialAdminComponents';
+import { IndustrialDashboardActions } from '@/components/industrial/IndustrialManagementClient';
 import { ADMIN_COOKIE } from '@/lib/adminSecurity';
 import { getIndustrialSummary, listIndustrialCompanies } from '@/lib/industrialIntelligenceService';
 import { parseIndustrialCompanyFilters } from '@/lib/industrialIntelligenceQuery';
@@ -23,6 +24,7 @@ export const dynamic = 'force-dynamic';
 export default async function IndustrialIntelligencePage() {
   const access = requireIndustrialPermissionForToken(cookies().get(ADMIN_COOKIE)?.value, 'industrial_intelligence.view');
   if (!access.ok) return <IndustrialAccessDenied message={access.message} />;
+  const editAccess = requireIndustrialPermissionForToken(cookies().get(ADMIN_COOKIE)?.value, 'industrial_intelligence.edit');
 
   const [summaryResult, companyResult] = await Promise.all([
     getIndustrialSummary(),
@@ -53,6 +55,7 @@ export default async function IndustrialIntelligencePage() {
 
         <IndustrialSchemaNotice schemaReady={summaryResult.schemaReady && companyResult.schemaReady} />
         <IndustrialKpiGrid metrics={summary.metrics} />
+        {editAccess.ok ? <IndustrialDashboardActions /> : <p className="notice slimNotice">Manual create workflows require industrial_intelligence.edit permission.</p>}
 
         {!hasData ? (
           <IndustrialEmptyState>

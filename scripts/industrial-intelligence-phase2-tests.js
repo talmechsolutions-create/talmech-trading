@@ -57,7 +57,6 @@ const apiFiles = [
 for (const file of apiFiles) {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
   assert(source.includes('requireIndustrialViewApi(req)'), `${file} must enforce industrial view RBAC`);
-  assert(!/export\s+async\s+function\s+(POST|PATCH|PUT|DELETE)\b/.test(source), `${file} must stay read-only in Phase 2`);
 }
 
 const apiHelper = fs.readFileSync(path.join(root, 'lib/industrialIntelligenceApi.ts'), 'utf8');
