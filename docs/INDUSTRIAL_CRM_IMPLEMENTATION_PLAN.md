@@ -178,6 +178,8 @@ Deferred:
 
 ## Phase 4: Import Dry-Run
 
+Status: completed in this repository as the controlled import and dry-run review foundation on 2026-08-27.
+
 Scope:
 - Build XLSX/CSV upload.
 - Parse rows into `IndustrialImportBatch` and `IndustrialImportRow`.
@@ -223,6 +225,21 @@ Tests:
 - payload size limits.
 - authorization and CSRF.
 - duplicate preview snapshots.
+
+Completed in this Phase 4 pass:
+- Added controlled import routes under `/admin/industrial-intelligence/imports` and `/admin/industrial-intelligence/imports/[id]`.
+- Added secured admin APIs for import list, upload, detail, mapping confirmation, dry run, review decisions, approval, and commit.
+- Reused `IndustrialImportBatch`, `IndustrialImportRow`, `IndustrialDuplicateCandidate`, and `IndustrialAuditEvent`.
+- Added dependency-free CSV and XLSX parsing with sheet discovery, analytics/control sheet exclusion, row/column limits, and formula-looking text neutralization.
+- Added controlled column auto-mapping with confidence and reviewable target fields.
+- Reused Phase 3 normalizers and duplicate matcher during dry run.
+- Added dry-run classifications, planned actions, duplicate summaries, validation issues, and paginated review rows.
+- Added guarded commit scaffolding that requires approval, is idempotent for already committed batches, processes bounded rows, and records row-level results.
+- Added `scripts/industrial-intelligence-phase4-tests.js`.
+- Created `docs/INDUSTRIAL_CRM_PHASE4_RESULT.md`.
+
+Deferred:
+- No real workbook import, sample manufacturer seed, duplicate review UI editing, existing-record update/merge commit behavior, Outreach promotion, CRM promotion, Marketplace change, schema change, migration, or destructive rollback was added.
 
 ## Phase 5: Duplicate Review And Approval
 

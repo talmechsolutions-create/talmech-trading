@@ -1,9 +1,15 @@
 import { NextRequest } from 'next/server';
 import { apiError } from '@/lib/security/apiResponse';
-import { requireIndustrialPermission } from '@/lib/security/industrialPermissions';
+import { IndustrialPermission, requireIndustrialPermission } from '@/lib/security/industrialPermissions';
 
 export function requireIndustrialViewApi(req: NextRequest) {
   const access = requireIndustrialPermission(req, 'industrial_intelligence.view');
+  if (!access.ok) return { ok: false as const, response: apiError(access.code, access.message, access.status) };
+  return { ok: true as const, actor: access.actor };
+}
+
+export function requireIndustrialApiPermission(req: NextRequest, permission: IndustrialPermission) {
+  const access = requireIndustrialPermission(req, permission);
   if (!access.ok) return { ok: false as const, response: apiError(access.code, access.message, access.status) };
   return { ok: true as const, actor: access.actor };
 }

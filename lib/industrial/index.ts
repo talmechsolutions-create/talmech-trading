@@ -1,6 +1,9 @@
 export * from './duplicates';
+export * from './importDryRun';
+export * from './importParsing';
+export * from './importService';
+export * from './importTypes';
 export * from './matcher';
 export * from './normalization';
 export * from './taxonomy';
 export * from './types';
-

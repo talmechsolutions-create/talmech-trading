@@ -47,6 +47,7 @@ export default async function IndustrialIntelligencePage() {
             <Link className="btn secondary" href="/admin">Admin home</Link>
             <Link className="btn" href="/admin/industrial-intelligence/companies">Companies</Link>
             <Link className="btn secondary" href="/admin/industrial-intelligence/contacts">Contacts</Link>
+            <Link className="btn secondary" href="/admin/industrial-intelligence/imports">Imports</Link>
           </div>
         </div>
 
@@ -58,6 +59,7 @@ export default async function IndustrialIntelligencePage() {
             <div className="industrialEmptyActions">
               <Link className="btn secondary" href="/admin/industrial-intelligence/companies">Open company list</Link>
               <Link className="btn secondary" href="/admin/industrial-intelligence/contacts">Open contacts</Link>
+              <Link className="btn secondary" href="/admin/industrial-intelligence/imports">Import database</Link>
             </div>
           </IndustrialEmptyState>
         ) : null}
